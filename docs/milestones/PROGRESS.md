@@ -2,6 +2,79 @@
 
 Resume log for milestone work. One line per step: what's done, what's next.
 
+## Milestone 04 — session screen (manual logging only, no native trigger)
+
+- 2026-08-18 — Read CLAUDE.md, milestone 04 spec, spec §6/§8, screens.html
+  flow 03, and the existing domain/data layer built in milestone 03 (none of
+  it was wired to any UI yet — `lib/main.dart` was still the stock
+  `flutter create` counter demo). Built the whole vertical slice:
+  - `lib/providers.dart` — first Riverpod wiring for `AppDatabase` and all
+    four repositories/`PrefillService`, plus `allExercisesProvider` for
+    cheap id→name lookups in the ledger.
+  - `lib/features/session/session_controller.dart` — `StateNotifier<AsyncValue<Session>>`
+    family keyed by sessionId. Manual start/end plays the trigger's role
+    per the milestone doc: `startSet` persists immediately (prefilled load,
+    no reps — a crash loses nothing, I5), `endSet` stamps `endedAt`,
+    `acceptPrediction` is the one-tap fast path (§8.2), `saveSetEdits` is
+    the overflow path used both to confirm-with-corrections and to edit any
+    past set (I5 — nothing gated on "current"). Auto-advance to
+    `session.nextOutstanding` only fires when the set just closed belonged
+    to the *current* exercise's *live* set — editing an old row never moves
+    the highlight.
+  - `lib/features/session/session_screen.dart` — the ledger. Each exercise
+    row derives its state (done / running / pendingReps / start) purely
+    from `WorkoutSet.startedAt`/`endedAt`/`hasReps` — no extra ephemeral
+    flags. Hollow-to-solid done with `TextStyle.foreground` +
+    `PaintingStyle.stroke` (stdlib Flutter, no custom painter). Predicted
+    reps render hollow and tap-to-accept defaults L=R for unilateral sets;
+    with no history to predict from (first time), the row falls back to
+    "log reps" and only the full sheet can close it.
+  - `lib/features/session/rep_entry_sheet.dart` — the overflow screen
+    (stepper w/ long-press coarse jump via existing `resolveIncrementKg`/
+    `coarseIncrementKg`, bilateral/unilateral toggle, `repQuickPicks` chips,
+    3 tag chips). Native numeric `TextField`s stand in for the mockup's
+    custom keypad grid (ladder rung 4 — the platform keyboard already does
+    this). **Scope cut**: only edits segment 0 — no multi-segment drop-set
+    entry UI, `Drop set` just tags the set. Flagged with a `ponytail:`-style
+    comment at the top of the file.
+  - `lib/features/session/exercise_picker_sheet.dart` — deferral list +
+    library search, in spec order. **Scope cut**: no "learned substitutes"
+    section — there's no `substitutionCount` table yet, so there's nothing
+    to rank it by. Add when that data exists.
+  - `lib/main.dart` — replaced the stock counter app. No home screen yet
+    (that's milestone 05), so it seeds the catalog, ensures a demo "Legs"
+    `WorkoutDay` (hip thrust / squat / balancing lunge [uni] / ham curl, per
+    spec §1), resumes today's open session for it or starts one, and drops
+    straight into `SessionScreen`.
+  - Small necessary additions to existing files, not scope creep: `copyWith`
+    on `WorkoutSet`/`SetSegment`/`Session` (editing needs them, `Load`
+    already had one); `Exercise.defaultLoadSource` (equipment → `LoadSource`
+    fallback for a set with zero history); `SessionRepository.addExerciseToSession`
+    (lets a zero-set off-plan pick show up in the pool immediately, per I4 —
+    refactored out of `addSet`'s existing lookup-or-insert logic rather than
+    duplicating it).
+  - Deleted the stock `test/widget_test.dart` counter smoke test; replaced
+    with `test/features/session/session_screen_test.dart` — two real
+    widget tests against an in-memory DB (no mocks of the app's own code)
+    that are literally the milestone's Done-when: log a full bilateral set
+    fast-path, defer an exercise mid-session and confirm `nextOutstanding`
+    walks back to it with zero prompts, and log a unilateral/per-side set
+    ("Single -40"-shaped) through the full entry sheet.
+  - `flutter analyze` clean, `flutter test` 28/28 green. Also manually
+    driven on the Pixel 9a emulator (adb tap + screenshots): boot →
+    demo Legs session → Start set → live elapsed pill → End set → "log
+    reps" pendingReps fallback (no history yet) → full sheet renders
+    exactly per screens.html. Incidentally confirmed two invariants live:
+    a weight-only partial save correctly stays `pendingReps` (I4), and
+    tapping "End session" while `log reps` was still outstanding left the
+    row fully editable — ending a session doesn't lock it (I5).
+  - **Not done**: rotate-mid-set device testing (emulator rotation wasn't
+    exercised this session) and the literal §1 Legs session end-to-end on
+    a real day boundary — the demo day's exercise list is a reasonable
+    stand-in, not the literal reference log line-for-line. Both are cheap
+    to check by hand; nothing in the implementation is day/rotation-aware
+    in a way that would break either.
+
 ## Milestone 03 — data layer (+ FakeTriggerBridge, empty availableTiers)
 
 - 2026-08-18 — iOS/Android native work deferred (no paid Apple dev account yet).

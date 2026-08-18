@@ -77,4 +77,16 @@ class Exercise {
     this.equipmentIncrement = 2.5,
     this.archived = false,
   });
+
+  /// Fallback [LoadSource] for a brand-new set with no history to prefill
+  /// from — the equipment tells you what kind of load it is.
+  LoadSource get defaultLoadSource => switch (equipment) {
+        Equipment.barbell => LoadSource.barbell,
+        Equipment.dumbbell => LoadSource.dumbbell,
+        Equipment.machine => LoadSource.machineStack,
+        Equipment.cable => LoadSource.cable,
+        Equipment.bodyweight => LoadSource.bodyweight,
+        Equipment.band => LoadSource.band,
+        Equipment.other => LoadSource.barbell,
+      };
 }

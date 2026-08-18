@@ -80,4 +80,20 @@ class Session {
       ..sort((a, b) => a.planOrder.compareTo(b.planOrder));
     return pending.isEmpty ? null : pending.first.exerciseId;
   }
+
+  Session copyWith({
+    String? currentExerciseId,
+    DateTime? endedAt,
+  }) =>
+      Session(
+        id: id,
+        date: date,
+        startedAt: startedAt,
+        workoutDayId: workoutDayId,
+        routineVersion: routineVersion,
+        intendedExerciseIds: intendedExerciseIds,
+        exercises: exercises,
+        currentExerciseId: currentExerciseId ?? this.currentExerciseId,
+        endedAt: endedAt ?? this.endedAt,
+      );
 }

@@ -1,122 +1,120 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
+
+import 'data/repositories/session_repository.dart';
+import 'data/seed/exercise_seed.dart';
+import 'domain/models/plan.dart';
+import 'domain/models/session.dart';
+import 'features/session/session_screen.dart';
+import 'providers.dart';
+
+const _uuid = Uuid();
 
 void main() {
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: RepTrackerApp()));
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class RepTrackerApp extends StatelessWidget {
+  const RepTrackerApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      title: 'REP Tracker',
+      theme: ThemeData(colorSchemeSeed: Colors.deepPurple, useMaterial3: true),
+      home: const _Bootstrap(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+/// Milestone 04 is the session screen standalone — there's no home screen
+/// or onboarding yet (milestones 05/07). This just seeds the catalog,
+/// ensures a demo "Legs" day exists, resumes today's session for it if one
+/// is already open, or starts one, then drops straight into the ledger.
+class _Bootstrap extends ConsumerStatefulWidget {
+  const _Bootstrap();
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  ConsumerState<_Bootstrap> createState() => _BootstrapState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _BootstrapState extends ConsumerState<_Bootstrap> {
+  String? _sessionId;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  static const _demoDayId = 'demo_legs';
+  static const _demoExerciseIds = [
+    'hip_thrust',
+    'barbell_squat',
+    'balancing_lunge',
+    'lying_leg_curl',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _prepare();
+  }
+
+  Future<void> _prepare() async {
+    final db = ref.read(databaseProvider);
+    final seedJson = await rootBundle.loadString('assets/seed/exercises.json');
+    await seedIfNeeded(db, seedJson);
+
+    final plans = ref.read(planRepositoryProvider);
+    if (await plans.getWorkoutDay(_demoDayId) == null) {
+      await plans.upsertWorkoutDay(
+        const WorkoutDay(
+          id: _demoDayId,
+          name: 'Legs',
+          exercises: [
+            PlannedExercise(exerciseId: 'hip_thrust', order: 0),
+            PlannedExercise(exerciseId: 'barbell_squat', order: 1),
+            PlannedExercise(
+              exerciseId: 'balancing_lunge',
+              order: 2,
+              defaultUnilateral: true,
+            ),
+            PlannedExercise(exerciseId: 'lying_leg_curl', order: 3),
+          ],
+        ),
+      );
+    }
+
+    final sessions = ref.read(sessionRepositoryProvider);
+    final today = DateTime.now();
+    final existing = await sessions.getForDate(today);
+    final open = existing.where((s) => s.workoutDayId == _demoDayId);
+    final session = open.isNotEmpty ? open.first : await _startSession(sessions, today);
+
+    if (!mounted) return;
+    setState(() => _sessionId = session.id);
+  }
+
+  Future<Session> _startSession(SessionRepository sessions, DateTime today) async {
+    final session = Session(
+      id: _uuid.v4(),
+      date: today,
+      startedAt: today,
+      workoutDayId: _demoDayId,
+      intendedExerciseIds: _demoExerciseIds,
+      currentExerciseId: _demoExerciseIds.first,
+      exercises: [
+        for (var i = 0; i < _demoExerciseIds.length; i++)
+          SessionExercise(exerciseId: _demoExerciseIds[i], planOrder: i),
+      ],
+    );
+    await sessions.createSession(session);
+    return session;
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
-    );
+    final id = _sessionId;
+    if (id == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    return SessionScreen(sessionId: id);
   }
 }

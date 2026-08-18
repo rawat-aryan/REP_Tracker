@@ -24,6 +24,19 @@ class SetSegment {
 
   /// Total reps across both limbs — the comparable quantity for volume.
   int get totalReps => reps ?? ((repsLeft ?? 0) + (repsRight ?? 0));
+
+  SetSegment copyWith({
+    Load? load,
+    int? reps,
+    int? repsLeft,
+    int? repsRight,
+  }) =>
+      SetSegment(
+        load: load ?? this.load,
+        reps: reps ?? this.reps,
+        repsLeft: repsLeft ?? this.repsLeft,
+        repsRight: repsRight ?? this.repsRight,
+      );
 }
 
 class WorkoutSet {
@@ -82,4 +95,28 @@ class WorkoutSet {
       startedAt != null &&
       endedAt != null &&
       endedAt!.difference(startedAt!) > threshold;
+
+  WorkoutSet copyWith({
+    Execution? execution,
+    List<SetSegment>? segments,
+    int? aggregateReps,
+    Set<SetTag>? tags,
+    String? tempo,
+    DateTime? startedAt,
+    DateTime? endedAt,
+    String? note,
+  }) =>
+      WorkoutSet(
+        id: id,
+        exerciseId: exerciseId,
+        index: index,
+        execution: execution ?? this.execution,
+        segments: segments ?? this.segments,
+        aggregateReps: aggregateReps ?? this.aggregateReps,
+        tags: tags ?? this.tags,
+        tempo: tempo ?? this.tempo,
+        startedAt: startedAt ?? this.startedAt,
+        endedAt: endedAt ?? this.endedAt,
+        note: note ?? this.note,
+      );
 }

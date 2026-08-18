@@ -62,23 +62,54 @@ class SessionRepository {
     required WorkoutSet set,
   }) async {
     await _db.transaction(() async {
-      final existing = await (_db.select(_db.sessionExercises)
-            ..where(
-              (t) =>
-                  t.sessionId.equals(sessionId) &
-                  t.exerciseId.equals(exerciseId),
-            ))
-          .getSingleOrNull();
-      final sessionExerciseId = existing?.id ??
-          await _db.into(_db.sessionExercises).insert(
-                SessionExercisesCompanion.insert(
-                  sessionId: sessionId,
-                  exerciseId: exerciseId,
-                  planOrder: planOrder,
-                ),
-              );
+      final sessionExerciseId = await _ensureSessionExercise(
+        sessionId: sessionId,
+        exerciseId: exerciseId,
+        planOrder: planOrder,
+      );
       await _insertSet(sessionExerciseId, exerciseId, set);
     });
+  }
+
+  /// Adds an exercise to the pool with zero sets — the entry point for an
+  /// off-plan pick from the exercise picker (§6 "session is a pool"). A
+  /// no-op if the exercise is already in the session. (I4: zero sets saves.)
+  Future<void> addExerciseToSession({
+    required String sessionId,
+    required String exerciseId,
+    required int planOrder,
+    bool offPlan = false,
+  }) async {
+    await _ensureSessionExercise(
+      sessionId: sessionId,
+      exerciseId: exerciseId,
+      planOrder: planOrder,
+      offPlan: offPlan,
+    );
+  }
+
+  Future<int> _ensureSessionExercise({
+    required String sessionId,
+    required String exerciseId,
+    required int planOrder,
+    bool offPlan = false,
+  }) async {
+    final existing = await (_db.select(_db.sessionExercises)
+          ..where(
+            (t) =>
+                t.sessionId.equals(sessionId) &
+                t.exerciseId.equals(exerciseId),
+          ))
+        .getSingleOrNull();
+    if (existing != null) return existing.id;
+    return _db.into(_db.sessionExercises).insert(
+          SessionExercisesCompanion.insert(
+            sessionId: sessionId,
+            exerciseId: exerciseId,
+            planOrder: planOrder,
+            offPlan: Value(offPlan),
+          ),
+        );
   }
 
   /// I5: a set logged in September stays editable in October. No status on
