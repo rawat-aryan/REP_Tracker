@@ -1,0 +1,659 @@
+{
+  "version": 1,
+  "note": "Starter seed \u2014 50 exercises. Spec calls for ~150; extend before launch. IDs are stable slugs and must never change once shipped.",
+  "exercises": [
+    {
+      "id": "barbell_squat",
+      "name": "Barbell squat",
+      "primaryMuscle": "quads",
+      "equipment": "barbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "squat",
+        "squats",
+        "back squat"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [
+        "glutes",
+        "hamstrings"
+      ]
+    },
+    {
+      "id": "front_squat",
+      "name": "Front squat",
+      "primaryMuscle": "quads",
+      "equipment": "barbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [],
+      "variantOf": "barbell_squat"
+    },
+    {
+      "id": "hack_squat",
+      "name": "Hack squat",
+      "primaryMuscle": "quads",
+      "equipment": "machine",
+      "equipmentIncrement": 5,
+      "aliases": [],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [],
+      "variantOf": "barbell_squat"
+    },
+    {
+      "id": "leg_press",
+      "name": "Leg press",
+      "primaryMuscle": "quads",
+      "equipment": "machine",
+      "equipmentIncrement": 5,
+      "aliases": [],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": []
+    },
+    {
+      "id": "leg_extension",
+      "name": "Leg extension",
+      "primaryMuscle": "quads",
+      "equipment": "machine",
+      "equipmentIncrement": 5,
+      "aliases": [
+        "extension",
+        "extensions",
+        "quad extension"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": []
+    },
+    {
+      "id": "hip_thrust",
+      "name": "Hip thrust",
+      "primaryMuscle": "glutes",
+      "equipment": "barbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "hip thrusts",
+        "barbell hip thrust"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [
+        "hamstrings"
+      ]
+    },
+    {
+      "id": "romanian_deadlift",
+      "name": "Romanian deadlift",
+      "primaryMuscle": "hamstrings",
+      "equipment": "barbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "rdl",
+        "rdls"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [
+        "glutes"
+      ]
+    },
+    {
+      "id": "conventional_deadlift",
+      "name": "Deadlift",
+      "primaryMuscle": "hamstrings",
+      "equipment": "barbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "deadlifts"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [
+        "back",
+        "glutes"
+      ]
+    },
+    {
+      "id": "lying_leg_curl",
+      "name": "Lying leg curl",
+      "primaryMuscle": "hamstrings",
+      "equipment": "machine",
+      "equipmentIncrement": 5,
+      "aliases": [
+        "ham curl",
+        "ham curls",
+        "hamstring curl"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": []
+    },
+    {
+      "id": "seated_leg_curl",
+      "name": "Seated leg curl",
+      "primaryMuscle": "hamstrings",
+      "equipment": "machine",
+      "equipmentIncrement": 5,
+      "aliases": [],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [],
+      "variantOf": "lying_leg_curl"
+    },
+    {
+      "id": "walking_lunge",
+      "name": "Walking lunge",
+      "primaryMuscle": "quads",
+      "equipment": "dumbbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "lunge",
+        "lunges"
+      ],
+      "defaultExecution": "unilateral",
+      "secondaryMuscles": [
+        "glutes"
+      ]
+    },
+    {
+      "id": "balancing_lunge",
+      "name": "Balancing lunge",
+      "primaryMuscle": "quads",
+      "equipment": "bodyweight",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "balancing lunges",
+        "split squat"
+      ],
+      "defaultExecution": "unilateral",
+      "secondaryMuscles": [
+        "glutes"
+      ]
+    },
+    {
+      "id": "bulgarian_split_squat",
+      "name": "Bulgarian split squat",
+      "primaryMuscle": "quads",
+      "equipment": "dumbbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "bss"
+      ],
+      "defaultExecution": "unilateral",
+      "secondaryMuscles": [],
+      "variantOf": "balancing_lunge"
+    },
+    {
+      "id": "standing_calf_raise",
+      "name": "Standing calf raise",
+      "primaryMuscle": "calves",
+      "equipment": "machine",
+      "equipmentIncrement": 5,
+      "aliases": [
+        "calves",
+        "calf raise"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": []
+    },
+    {
+      "id": "seated_calf_raise",
+      "name": "Seated calf raise",
+      "primaryMuscle": "calves",
+      "equipment": "machine",
+      "equipmentIncrement": 5,
+      "aliases": [],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [],
+      "variantOf": "standing_calf_raise"
+    },
+    {
+      "id": "flat_bench_press",
+      "name": "Bench press",
+      "primaryMuscle": "chest",
+      "equipment": "barbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "bp",
+        "flat bp",
+        "bench"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [
+        "triceps",
+        "frontDelt"
+      ]
+    },
+    {
+      "id": "incline_bench_press",
+      "name": "Incline bench press",
+      "primaryMuscle": "chest",
+      "equipment": "barbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "incline bp",
+        "incline bench"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [
+        "frontDelt"
+      ],
+      "variantOf": "flat_bench_press"
+    },
+    {
+      "id": "decline_bench_press",
+      "name": "Decline bench press",
+      "primaryMuscle": "chest",
+      "equipment": "barbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [],
+      "variantOf": "flat_bench_press"
+    },
+    {
+      "id": "dumbbell_bench_press",
+      "name": "Dumbbell bench press",
+      "primaryMuscle": "chest",
+      "equipment": "dumbbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "db press"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [],
+      "variantOf": "flat_bench_press"
+    },
+    {
+      "id": "dumbbell_incline_press",
+      "name": "Dumbbell incline press",
+      "primaryMuscle": "chest",
+      "equipment": "dumbbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [],
+      "variantOf": "incline_bench_press"
+    },
+    {
+      "id": "machine_chest_press",
+      "name": "Machine chest press",
+      "primaryMuscle": "chest",
+      "equipment": "machine",
+      "equipmentIncrement": 5,
+      "aliases": [],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": []
+    },
+    {
+      "id": "cable_fly",
+      "name": "Cable fly",
+      "primaryMuscle": "chest",
+      "equipment": "cable",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "fly",
+        "flies",
+        "flyes",
+        "pec fly"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": []
+    },
+    {
+      "id": "dumbbell_fly",
+      "name": "Dumbbell fly",
+      "primaryMuscle": "chest",
+      "equipment": "dumbbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [],
+      "variantOf": "cable_fly"
+    },
+    {
+      "id": "dips",
+      "name": "Dips",
+      "primaryMuscle": "chest",
+      "equipment": "bodyweight",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "dip"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [
+        "triceps"
+      ]
+    },
+    {
+      "id": "pull_up",
+      "name": "Pull-up",
+      "primaryMuscle": "lats",
+      "equipment": "bodyweight",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "pullup",
+        "pull ups",
+        "pull-ups"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [
+        "biceps"
+      ]
+    },
+    {
+      "id": "chin_up",
+      "name": "Chin-up",
+      "primaryMuscle": "lats",
+      "equipment": "bodyweight",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "chinup"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [],
+      "variantOf": "pull_up"
+    },
+    {
+      "id": "lat_pulldown",
+      "name": "Lat pulldown",
+      "primaryMuscle": "lats",
+      "equipment": "machine",
+      "equipmentIncrement": 5,
+      "aliases": [
+        "lat pull down",
+        "pulldown"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [
+        "biceps"
+      ]
+    },
+    {
+      "id": "seated_cable_row",
+      "name": "Seated row",
+      "primaryMuscle": "back",
+      "equipment": "cable",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "seated rows",
+        "cable row"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [
+        "biceps"
+      ]
+    },
+    {
+      "id": "barbell_row",
+      "name": "Barbell row",
+      "primaryMuscle": "back",
+      "equipment": "barbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "bent over row"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [
+        "biceps"
+      ]
+    },
+    {
+      "id": "dumbbell_row",
+      "name": "Dumbbell row",
+      "primaryMuscle": "back",
+      "equipment": "dumbbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "one arm row",
+        "single arm row"
+      ],
+      "defaultExecution": "unilateral",
+      "secondaryMuscles": []
+    },
+    {
+      "id": "chest_supported_row",
+      "name": "Chest-supported row",
+      "primaryMuscle": "back",
+      "equipment": "machine",
+      "equipmentIncrement": 5,
+      "aliases": [],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [],
+      "variantOf": "barbell_row"
+    },
+    {
+      "id": "straight_arm_pulldown",
+      "name": "Pullover",
+      "primaryMuscle": "lats",
+      "equipment": "cable",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "pull over",
+        "straight arm pulldown"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": []
+    },
+    {
+      "id": "shrug",
+      "name": "Shrugs",
+      "primaryMuscle": "traps",
+      "equipment": "barbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "shrug",
+        "dumbbell shrug"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": []
+    },
+    {
+      "id": "overhead_press",
+      "name": "Overhead press",
+      "primaryMuscle": "frontDelt",
+      "equipment": "barbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "ohp",
+        "front press",
+        "shoulder press"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [
+        "triceps"
+      ]
+    },
+    {
+      "id": "dumbbell_shoulder_press",
+      "name": "Dumbbell shoulder press",
+      "primaryMuscle": "frontDelt",
+      "equipment": "dumbbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [],
+      "variantOf": "overhead_press"
+    },
+    {
+      "id": "lateral_raise",
+      "name": "Lateral raise",
+      "primaryMuscle": "sideDelt",
+      "equipment": "dumbbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "lat raise",
+        "lateral raises",
+        "side raise"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": []
+    },
+    {
+      "id": "cable_lateral_raise",
+      "name": "Cable lateral raise",
+      "primaryMuscle": "sideDelt",
+      "equipment": "cable",
+      "equipmentIncrement": 2.5,
+      "aliases": [],
+      "defaultExecution": "unilateral",
+      "secondaryMuscles": [],
+      "variantOf": "lateral_raise"
+    },
+    {
+      "id": "rear_delt_fly",
+      "name": "Rear delt fly",
+      "primaryMuscle": "rearDelt",
+      "equipment": "dumbbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "rear delts",
+        "reverse fly",
+        "rear delt"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": []
+    },
+    {
+      "id": "face_pull",
+      "name": "Face pull",
+      "primaryMuscle": "rearDelt",
+      "equipment": "cable",
+      "equipmentIncrement": 2.5,
+      "aliases": [],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": []
+    },
+    {
+      "id": "barbell_curl",
+      "name": "Barbell curl",
+      "primaryMuscle": "biceps",
+      "equipment": "barbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "bicep curl",
+        "curl"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": []
+    },
+    {
+      "id": "dumbbell_curl",
+      "name": "Dumbbell curl",
+      "primaryMuscle": "biceps",
+      "equipment": "dumbbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "bicep",
+        "biceps"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [],
+      "variantOf": "barbell_curl"
+    },
+    {
+      "id": "hammer_curl",
+      "name": "Hammer curl",
+      "primaryMuscle": "biceps",
+      "equipment": "dumbbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [
+        "forearms"
+      ],
+      "variantOf": "dumbbell_curl"
+    },
+    {
+      "id": "preacher_curl",
+      "name": "Preacher curl",
+      "primaryMuscle": "biceps",
+      "equipment": "machine",
+      "equipmentIncrement": 5,
+      "aliases": [],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [],
+      "variantOf": "barbell_curl"
+    },
+    {
+      "id": "skull_crusher",
+      "name": "Skull crusher",
+      "primaryMuscle": "triceps",
+      "equipment": "barbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "skullcrusher",
+        "lying tricep extension"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": []
+    },
+    {
+      "id": "tricep_pushdown",
+      "name": "Tricep pushdown",
+      "primaryMuscle": "triceps",
+      "equipment": "cable",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "tricep extension",
+        "pushdown",
+        "tricep machine"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": []
+    },
+    {
+      "id": "overhead_tricep_extension",
+      "name": "Overhead tricep extension",
+      "primaryMuscle": "triceps",
+      "equipment": "cable",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "overhead extension"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [],
+      "variantOf": "tricep_pushdown"
+    },
+    {
+      "id": "close_grip_bench",
+      "name": "Close-grip bench press",
+      "primaryMuscle": "triceps",
+      "equipment": "barbell",
+      "equipmentIncrement": 2.5,
+      "aliases": [],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": [],
+      "variantOf": "flat_bench_press"
+    },
+    {
+      "id": "cable_crunch",
+      "name": "Cable crunch",
+      "primaryMuscle": "abs",
+      "equipment": "cable",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "ab crunch"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": []
+    },
+    {
+      "id": "hanging_leg_raise",
+      "name": "Hanging leg raise",
+      "primaryMuscle": "abs",
+      "equipment": "bodyweight",
+      "equipmentIncrement": 2.5,
+      "aliases": [
+        "leg raise"
+      ],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": []
+    },
+    {
+      "id": "plank",
+      "name": "Plank",
+      "primaryMuscle": "abs",
+      "equipment": "bodyweight",
+      "equipmentIncrement": 2.5,
+      "aliases": [],
+      "defaultExecution": "bilateral",
+      "secondaryMuscles": []
+    }
+  ]
+}
