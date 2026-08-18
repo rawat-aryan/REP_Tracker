@@ -5,6 +5,7 @@ import 'bridge/trigger_bridge.dart';
 import 'bridge/trigger_drain_service.dart';
 import 'data/database.dart';
 import 'data/repositories/bodyweight_repository.dart';
+import 'data/repositories/day_resolution_repository.dart';
 import 'data/repositories/drift_prefill_service.dart';
 import 'data/repositories/exercise_repository.dart';
 import 'data/repositories/plan_repository.dart';
@@ -47,6 +48,10 @@ final profileRepositoryProvider = Provider<ProfileRepository>(
 
 final bodyweightRepositoryProvider = Provider<BodyweightRepository>(
   (ref) => BodyweightRepository(ref.watch(databaseProvider)),
+);
+
+final dayResolutionRepositoryProvider = Provider<DayResolutionRepository>(
+  (ref) => DayResolutionRepository(ref.watch(databaseProvider)),
 );
 
 final prefillServiceProvider = Provider<PrefillService>(

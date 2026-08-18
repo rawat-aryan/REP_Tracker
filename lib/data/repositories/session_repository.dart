@@ -186,6 +186,23 @@ class SessionRepository {
     );
   }
 
+  /// Every session with [from] <= date < [to] — the observation layer's read
+  /// path (day-status heatmap, pattern detection across cycles). Unlike
+  /// [historyForExercise]/[lastSetAtIndex], callers here are explicitly
+  /// allowed to compare the result against the plan (that comparison IS
+  /// milestone 09's job) — this method just returns literal calendar dates.
+  Future<List<Session>> getInRange(DateTime from, DateTime to) async {
+    final rows = await (_db.select(_db.sessions)
+          ..where((t) => t.date.isBiggerOrEqualValue(from) & t.date.isSmallerThanValue(to)))
+        .get();
+    final sessions = <Session>[];
+    for (final row in rows) {
+      final full = await getById(row.id);
+      if (full != null) sessions.add(full);
+    }
+    return sessions;
+  }
+
   /// Multiple sessions per calendar date are allowed (morning legs, evening
   /// arms) — this looks up by literal date, never by weekday slot.
   Future<List<Session>> getForDate(DateTime date) async {

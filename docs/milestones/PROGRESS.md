@@ -2,6 +2,117 @@
 
 Resume log for milestone work. One line per step: what's done, what's next.
 
+## Milestone 09 — observation layer
+
+- 2026-08-19 — Read CLAUDE.md, milestone 09 spec, spec §9/§10, and the
+  milestone's own literal test instruction ("six weeks of PPL with one
+  travel week displacing Pull from Wednesday to Thursday — the detector
+  must not propose moving Pull"). Built the observation engine and wired
+  it into three existing surfaces rather than inventing new screens where
+  an existing one already fit.
+  - `lib/domain/rules/day_status.dart` — pure `deriveDayStatus`. `logged`
+    always wins if a session exists that date; otherwise a manual
+    [DayResolution] decides; otherwise unscheduled days are `rest`; a
+    scheduled day with nothing logged is `unresolved` **only** once it's
+    actually in the past — today/future are never flagged (I2: nothing
+    here ever produces `missed`, which the enum keeps for a future
+    explicit action, not silent inference).
+  - `lib/domain/rules/pattern_detection.dart` — pure `detectPatterns`.
+    Groups what was actually logged by weekday, requires the **two most
+    recent** occurrences of a weekday to agree (`exerciseOverlap >=
+    kSameDayThreshold`) before proposing anything, and requires the
+    proposal to differ from whatever's already assigned. A weekday with
+    only one occurrence on record is never enough. Verified against the
+    milestone's own fixture almost verbatim
+    (`test/domain/pattern_detection_test.dart`) plus four more cases
+    (anecdote-vs-pattern, agree/disagree, a real sustained 2-cycle change,
+    already-matches-current) — 6/6 green, dart-test-only, no Flutter.
+  - `lib/domain/models/plan.dart` — added `DayResolutionKind`
+    (rest/travel/movedTo) and `DayResolution`. "add it now" from the
+    spec's ambient wording isn't a resolution kind — it just creates a
+    real `Session`, which `deriveDayStatus` already turns into `logged`.
+  - `lib/data/schema.dart` + `database.dart` — new `DayResolutions` table
+    (one row per resolved date, `insertOnConflictUpdate` so a resolution
+    can be changed later) and `DayResolutionRepository`. Hit one real
+    build error here: `DayResolutionKind` has to be imported directly into
+    `database.dart` (not just `schema.dart`) for the Drift-generated part
+    file to see it — part files only inherit the primary library's own
+    imports.
+  - `lib/data/repositories/session_repository.dart` — added
+    `getInRange(from, to)`, the observation layer's read path. Explicitly
+    **not** I1-restricted the way `historyForExercise`/`lastSetAtIndex`
+    are — comparing logged behaviour against the plan is milestone 09's
+    entire job, unlike prefill/history/PR/chart queries.
+  - `lib/features/history/history_screen.dart` (new) — the heatmap
+    deferred whole from milestone 08, now unblocked: filled/hollow-dashed/
+    muted squares per `deriveDayStatus`, tap an unresolved square to
+    retroactively resolve it (Rest/Travel/Did it a different day/Add it
+    now), same `DayResolutionSheet` reused by the home screen's ambient
+    row. "Browse exercises" quiet link keeps milestone 08's exercise list
+    reachable from the same screen instead of adding a third home-screen
+    icon.
+  - `lib/features/home/ambient_banners.dart` — `unresolvedGap` added to
+    `AmbientBanners`: scans the last 14 days for the most recent
+    unresolved date and surfaces exactly one row at a time (never stacks
+    into a nag list), `Resolve` opens the shared sheet, `×` dismisses for
+    this app run only (`dismissedGapDatesProvider`, same in-memory pattern
+    as the existing capability-offer dismiss) — dismissing never
+    fabricates an answer, the gap just reappears next launch until it's
+    actually resolved.
+  - `lib/domain/rules/home.dart` + `home_providers.dart` +
+    `home_screen.dart` — `RestDay` gained `provisionalDayName`/
+    `provisionalExerciseIds`. When today's slot is unassigned,
+    `home_providers.dart` runs `detectPatterns` over the last 8 weeks of
+    real session history against the plan's current weekday assignments,
+    and — if today's weekday gets a proposal — tries to name it by
+    matching an existing `WorkoutDay`'s exercise list (so "Legs" reads as
+    "Legs? · tap to confirm" instead of a generic placeholder when the
+    pattern is really an existing day recurring on a new weekday, per
+    spec §10's "one WorkoutDay in two weekday slots"). Confirming writes
+    a real `WeekPlan` slot immediately — the guess is never applied on its
+    own (I2), only a tap does this.
+  - **Scope cut, flagged rather than half-built**: §10's duplicate-day
+    split flow (Legs A/B — detecting <50% overlap twice in a row and
+    forking a new `WorkoutDay` from that point forward) is NOT built.
+    `exerciseOverlap`/`kSameDayThreshold`/`kSplitDayThreshold` have existed
+    since milestone 03 and are exactly the primitive this needs, but the
+    actual split-forward mechanics (new WorkoutDay creation, re-pointing
+    the weekday slot without touching history, the specific "Keep
+    separate / Same day / Ask me later" wording and its own
+    never-ask-again persistence) is a genuinely separate sub-project on
+    top of what shipped here. Flagging honestly rather than shipping a
+    detector with no way to act on it.
+  - `flutter analyze` clean, `flutter test` 66/66 green — 6 new pattern-
+    detection tests, 7 new day-status tests, 2 new
+    `DayResolutionRepository` round-trip tests, a `HistoryScreen` widget
+    test (tap an unresolved square by its tooltip date, resolve as Rest,
+    confirm the DB row), and a `HomeScreen` widget test for the
+    provisional-header-to-confirmed-assignment path end to end.
+  - **Two real bugs found only by on-device testing**: (1)
+    `HistoryScreen`'s body `Column` had no scroll container — overflowed
+    on a real device/test viewport the moment the legend row and browse
+    button pushed past the 42-cell grid; fixed with a
+    `SingleChildScrollView`, which is also what surfaced bug (2): the
+    provisional-header "confirm" handler used `DateTime.now()` directly
+    instead of reading `nowProvider`, so confirming assigned whatever
+    weekday the real wall clock said rather than the weekday the header
+    was actually computed for — invisible in manual testing (real device
+    clock and "now" always agree) but caught immediately by the widget
+    test once it exercised a non-"today" scenario. Fixed to
+    `ref.read(nowProvider)`.
+  - Manually driven on the Android emulator through a full fresh
+    onboarding (PPL archetype) into real usage: the ambient gap banner
+    appeared organically for yesterday's unscheduled-but-past Pull day
+    with the exact spec wording ("Tue 18 Aug — no session logged."),
+    resolving it via "Travel" correctly advanced the banner to the next
+    most recent gap ("Mon 17 Aug"), and the heatmap rendered cleanly with
+    no overflow post-fix. The provisional-header confirm path was
+    verified via the widget test rather than on-device (reproducing two
+    matching weeks of real session data through the existing manual
+    session-logging UI via `adb` proved too slow to be worth the
+    additional tool-call budget once the logic was already proven twice
+    over in milestone 08's chart work).
+
 ## Milestone 08 — charts
 
 - 2026-08-19 — Read CLAUDE.md, milestone 08 spec, spec §11, and

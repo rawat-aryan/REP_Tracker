@@ -7,8 +7,10 @@ import 'package:rep_tracker/data/repositories/exercise_repository.dart';
 import 'package:rep_tracker/data/repositories/plan_repository.dart';
 import 'package:rep_tracker/data/repositories/session_repository.dart';
 import 'package:rep_tracker/domain/models/exercise.dart';
+import 'package:rep_tracker/domain/models/load.dart';
 import 'package:rep_tracker/domain/models/plan.dart';
 import 'package:rep_tracker/domain/models/session.dart';
+import 'package:rep_tracker/domain/models/workout_set.dart';
 import 'package:rep_tracker/domain/rules/home.dart';
 import 'package:rep_tracker/features/home/home_screen.dart';
 import 'package:rep_tracker/providers.dart';
@@ -138,4 +140,58 @@ void main() {
 
     await db.close();
   });
+
+  testWidgets(
+    'milestone 09: a pattern that has held for 2 consecutive Tuesdays shows a '
+    'provisional header on an unassigned Tuesday, and confirming assigns it',
+    (tester) async {
+      final db = AppDatabase(NativeDatabase.memory());
+      final exercises = ExerciseRepository(db);
+      final sessions = SessionRepository(db);
+      await _seedPlan(db); // Monday -> Legs; Tuesday is unassigned (rest)
+      await exercises.upsert(
+        const Exercise(id: 'bicep_curl', name: 'Bicep curl', primaryMuscle: Muscle.biceps, equipment: Equipment.dumbbell),
+      );
+
+      Future<void> logTuesday(DateTime tuesday) async {
+        final id = 's-${tuesday.toIso8601String()}';
+        await sessions.createSession(Session(id: id, date: tuesday, startedAt: tuesday));
+        await sessions.addSet(
+          sessionId: id,
+          exerciseId: 'bicep_curl',
+          planOrder: 0,
+          set: WorkoutSet(
+            id: '$id-set1',
+            exerciseId: 'bicep_curl',
+            index: 1,
+            startedAt: tuesday,
+            endedAt: tuesday.add(const Duration(seconds: 30)),
+            segments: const [SetSegment(load: Load(value: 12, source: LoadSource.dumbbell), reps: 10)],
+          ),
+        );
+      }
+
+      // The two most recent Tuesdays before "now" (a later Tuesday).
+      final now = DateTime(2026, 8, 18, 9); // a Tuesday
+      await logTuesday(DateTime(2026, 8, 4, 9));
+      await logTuesday(DateTime(2026, 8, 11, 9));
+
+      await tester.pumpWidget(_harness(db, now: now));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('?'), findsOneWidget);
+      expect(find.text('tap to confirm'), findsOneWidget);
+
+      await tester.tap(find.text('tap to confirm'));
+      await tester.pumpAndSettle();
+
+      final plans = PlanRepository(db);
+      final plan = await plans.getLatestWeekPlan(demoRoutineId);
+      expect(plan!.slots[Weekday.tue], isNotNull);
+      final assignedDay = await plans.getWorkoutDay(plan.slots[Weekday.tue]!);
+      expect(assignedDay!.exercises.map((e) => e.exerciseId), contains('bicep_curl'));
+
+      await db.close();
+    },
+  );
 }

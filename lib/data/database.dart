@@ -7,7 +7,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../domain/models/exercise.dart';
 import '../domain/models/load.dart';
-import '../domain/models/plan.dart' show Weekday;
+import '../domain/models/plan.dart' show DayResolutionKind, Weekday;
 import 'schema.dart';
 
 part 'database.g.dart';
@@ -26,6 +26,7 @@ part 'database.g.dart';
     SetSegments,
     BodyweightEntries,
     SeedMeta,
+    DayResolutions,
   ],
 )
 class AppDatabase extends _$AppDatabase {

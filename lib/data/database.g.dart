@@ -3983,6 +3983,248 @@ class SeedMetaCompanion extends UpdateCompanion<SeedMetaData> {
   }
 }
 
+class $DayResolutionsTable extends DayResolutions
+    with TableInfo<$DayResolutionsTable, DayResolutionRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DayResolutionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+      'date', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  late final GeneratedColumnWithTypeConverter<DayResolutionKind, String> kind =
+      GeneratedColumn<String>('kind', aliasedName, false,
+              type: DriftSqlType.string, requiredDuringInsert: true)
+          .withConverter<DayResolutionKind>(
+              $DayResolutionsTable.$converterkind);
+  static const VerificationMeta _movedToDateMeta =
+      const VerificationMeta('movedToDate');
+  @override
+  late final GeneratedColumn<DateTime> movedToDate = GeneratedColumn<DateTime>(
+      'moved_to_date', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [date, kind, movedToDate];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'day_resolutions';
+  @override
+  VerificationContext validateIntegrity(Insertable<DayResolutionRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('date')) {
+      context.handle(
+          _dateMeta, date.isAcceptableOrUnknown(data['date']!, _dateMeta));
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('moved_to_date')) {
+      context.handle(
+          _movedToDateMeta,
+          movedToDate.isAcceptableOrUnknown(
+              data['moved_to_date']!, _movedToDateMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {date};
+  @override
+  DayResolutionRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DayResolutionRow(
+      date: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
+      kind: $DayResolutionsTable.$converterkind.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}kind'])!),
+      movedToDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}moved_to_date']),
+    );
+  }
+
+  @override
+  $DayResolutionsTable createAlias(String alias) {
+    return $DayResolutionsTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<DayResolutionKind, String, String> $converterkind =
+      const EnumNameConverter<DayResolutionKind>(DayResolutionKind.values);
+}
+
+class DayResolutionRow extends DataClass
+    implements Insertable<DayResolutionRow> {
+  final DateTime date;
+  final DayResolutionKind kind;
+  final DateTime? movedToDate;
+  const DayResolutionRow(
+      {required this.date, required this.kind, this.movedToDate});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['date'] = Variable<DateTime>(date);
+    {
+      map['kind'] =
+          Variable<String>($DayResolutionsTable.$converterkind.toSql(kind));
+    }
+    if (!nullToAbsent || movedToDate != null) {
+      map['moved_to_date'] = Variable<DateTime>(movedToDate);
+    }
+    return map;
+  }
+
+  DayResolutionsCompanion toCompanion(bool nullToAbsent) {
+    return DayResolutionsCompanion(
+      date: Value(date),
+      kind: Value(kind),
+      movedToDate: movedToDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(movedToDate),
+    );
+  }
+
+  factory DayResolutionRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DayResolutionRow(
+      date: serializer.fromJson<DateTime>(json['date']),
+      kind: $DayResolutionsTable.$converterkind
+          .fromJson(serializer.fromJson<String>(json['kind'])),
+      movedToDate: serializer.fromJson<DateTime?>(json['movedToDate']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'date': serializer.toJson<DateTime>(date),
+      'kind': serializer
+          .toJson<String>($DayResolutionsTable.$converterkind.toJson(kind)),
+      'movedToDate': serializer.toJson<DateTime?>(movedToDate),
+    };
+  }
+
+  DayResolutionRow copyWith(
+          {DateTime? date,
+          DayResolutionKind? kind,
+          Value<DateTime?> movedToDate = const Value.absent()}) =>
+      DayResolutionRow(
+        date: date ?? this.date,
+        kind: kind ?? this.kind,
+        movedToDate: movedToDate.present ? movedToDate.value : this.movedToDate,
+      );
+  DayResolutionRow copyWithCompanion(DayResolutionsCompanion data) {
+    return DayResolutionRow(
+      date: data.date.present ? data.date.value : this.date,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      movedToDate:
+          data.movedToDate.present ? data.movedToDate.value : this.movedToDate,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DayResolutionRow(')
+          ..write('date: $date, ')
+          ..write('kind: $kind, ')
+          ..write('movedToDate: $movedToDate')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(date, kind, movedToDate);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DayResolutionRow &&
+          other.date == this.date &&
+          other.kind == this.kind &&
+          other.movedToDate == this.movedToDate);
+}
+
+class DayResolutionsCompanion extends UpdateCompanion<DayResolutionRow> {
+  final Value<DateTime> date;
+  final Value<DayResolutionKind> kind;
+  final Value<DateTime?> movedToDate;
+  final Value<int> rowid;
+  const DayResolutionsCompanion({
+    this.date = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.movedToDate = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DayResolutionsCompanion.insert({
+    required DateTime date,
+    required DayResolutionKind kind,
+    this.movedToDate = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : date = Value(date),
+        kind = Value(kind);
+  static Insertable<DayResolutionRow> custom({
+    Expression<DateTime>? date,
+    Expression<String>? kind,
+    Expression<DateTime>? movedToDate,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (date != null) 'date': date,
+      if (kind != null) 'kind': kind,
+      if (movedToDate != null) 'moved_to_date': movedToDate,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DayResolutionsCompanion copyWith(
+      {Value<DateTime>? date,
+      Value<DayResolutionKind>? kind,
+      Value<DateTime?>? movedToDate,
+      Value<int>? rowid}) {
+    return DayResolutionsCompanion(
+      date: date ?? this.date,
+      kind: kind ?? this.kind,
+      movedToDate: movedToDate ?? this.movedToDate,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(
+          $DayResolutionsTable.$converterkind.toSql(kind.value));
+    }
+    if (movedToDate.present) {
+      map['moved_to_date'] = Variable<DateTime>(movedToDate.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DayResolutionsCompanion(')
+          ..write('date: $date, ')
+          ..write('kind: $kind, ')
+          ..write('movedToDate: $movedToDate, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4000,6 +4242,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $BodyweightEntriesTable bodyweightEntries =
       $BodyweightEntriesTable(this);
   late final $SeedMetaTable seedMeta = $SeedMetaTable(this);
+  late final $DayResolutionsTable dayResolutions = $DayResolutionsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4015,7 +4258,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         workoutSets,
         setSegments,
         bodyweightEntries,
-        seedMeta
+        seedMeta,
+        dayResolutions
       ];
 }
 
@@ -7135,6 +7379,152 @@ typedef $$SeedMetaTableProcessedTableManager = ProcessedTableManager<
     (SeedMetaData, BaseReferences<_$AppDatabase, $SeedMetaTable, SeedMetaData>),
     SeedMetaData,
     PrefetchHooks Function()>;
+typedef $$DayResolutionsTableCreateCompanionBuilder = DayResolutionsCompanion
+    Function({
+  required DateTime date,
+  required DayResolutionKind kind,
+  Value<DateTime?> movedToDate,
+  Value<int> rowid,
+});
+typedef $$DayResolutionsTableUpdateCompanionBuilder = DayResolutionsCompanion
+    Function({
+  Value<DateTime> date,
+  Value<DayResolutionKind> kind,
+  Value<DateTime?> movedToDate,
+  Value<int> rowid,
+});
+
+class $$DayResolutionsTableFilterComposer
+    extends Composer<_$AppDatabase, $DayResolutionsTable> {
+  $$DayResolutionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<DateTime> get date => $composableBuilder(
+      column: $table.date, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<DayResolutionKind, DayResolutionKind, String>
+      get kind => $composableBuilder(
+          column: $table.kind,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+
+  ColumnFilters<DateTime> get movedToDate => $composableBuilder(
+      column: $table.movedToDate, builder: (column) => ColumnFilters(column));
+}
+
+class $$DayResolutionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DayResolutionsTable> {
+  $$DayResolutionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+      column: $table.date, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get movedToDate => $composableBuilder(
+      column: $table.movedToDate, builder: (column) => ColumnOrderings(column));
+}
+
+class $$DayResolutionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DayResolutionsTable> {
+  $$DayResolutionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DayResolutionKind, String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get movedToDate => $composableBuilder(
+      column: $table.movedToDate, builder: (column) => column);
+}
+
+class $$DayResolutionsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $DayResolutionsTable,
+    DayResolutionRow,
+    $$DayResolutionsTableFilterComposer,
+    $$DayResolutionsTableOrderingComposer,
+    $$DayResolutionsTableAnnotationComposer,
+    $$DayResolutionsTableCreateCompanionBuilder,
+    $$DayResolutionsTableUpdateCompanionBuilder,
+    (
+      DayResolutionRow,
+      BaseReferences<_$AppDatabase, $DayResolutionsTable, DayResolutionRow>
+    ),
+    DayResolutionRow,
+    PrefetchHooks Function()> {
+  $$DayResolutionsTableTableManager(
+      _$AppDatabase db, $DayResolutionsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DayResolutionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DayResolutionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DayResolutionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<DateTime> date = const Value.absent(),
+            Value<DayResolutionKind> kind = const Value.absent(),
+            Value<DateTime?> movedToDate = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              DayResolutionsCompanion(
+            date: date,
+            kind: kind,
+            movedToDate: movedToDate,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required DateTime date,
+            required DayResolutionKind kind,
+            Value<DateTime?> movedToDate = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              DayResolutionsCompanion.insert(
+            date: date,
+            kind: kind,
+            movedToDate: movedToDate,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$DayResolutionsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $DayResolutionsTable,
+    DayResolutionRow,
+    $$DayResolutionsTableFilterComposer,
+    $$DayResolutionsTableOrderingComposer,
+    $$DayResolutionsTableAnnotationComposer,
+    $$DayResolutionsTableCreateCompanionBuilder,
+    $$DayResolutionsTableUpdateCompanionBuilder,
+    (
+      DayResolutionRow,
+      BaseReferences<_$AppDatabase, $DayResolutionsTable, DayResolutionRow>
+    ),
+    DayResolutionRow,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7161,4 +7551,6 @@ class $AppDatabaseManager {
       $$BodyweightEntriesTableTableManager(_db, _db.bodyweightEntries);
   $$SeedMetaTableTableManager get seedMeta =>
       $$SeedMetaTableTableManager(_db, _db.seedMeta);
+  $$DayResolutionsTableTableManager get dayResolutions =>
+      $$DayResolutionsTableTableManager(_db, _db.dayResolutions);
 }

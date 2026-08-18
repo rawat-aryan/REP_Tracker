@@ -17,11 +17,16 @@ class NoPlanYet extends HomeState {
   const NoPlanYet();
 }
 
-/// Today's slot is null. Genuinely quiet — no call to action (spec §12).
+/// Today's slot is null. Genuinely quiet — no call to action (spec §12),
+/// unless [provisionalDayName] is set: a pattern has emerged for today's
+/// weekday (spec §9, "observing -> provisional") and is shown as a visibly
+/// tentative guess, never silently applied.
 class RestDay extends HomeState {
-  const RestDay({this.lastSession, this.nextDayName});
+  const RestDay({this.lastSession, this.nextDayName, this.provisionalDayName, this.provisionalExerciseIds});
   final LastSessionSummary? lastSession;
   final String? nextDayName;
+  final String? provisionalDayName;
+  final Set<String>? provisionalExerciseIds;
 }
 
 /// Today's slot has a day, and nothing has been logged for it yet today.

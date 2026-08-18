@@ -4,7 +4,7 @@ import 'package:drift/drift.dart';
 
 import '../domain/models/exercise.dart';
 import '../domain/models/load.dart';
-import '../domain/models/plan.dart' show Weekday;
+import '../domain/models/plan.dart' show DayResolutionKind, Weekday;
 
 /// Stores a `List<String>` as JSON in a single text column. Used for
 /// aliases, secondary-muscle names, set tags and intended-exercise lists —
@@ -210,6 +210,20 @@ class SetSegments extends Table {
   IntColumn get reps => integer().nullable()();
   IntColumn get repsLeft => integer().nullable()();
   IntColumn get repsRight => integer().nullable()();
+}
+
+/// One row per manually resolved gap (spec §9), keyed by the ORIGINAL
+/// scheduled date — never inferred, always the result of an explicit tap
+/// (I2). Retroactive resolution works for a gap of any age, so there's no
+/// expiry or archival here.
+@DataClassName('DayResolutionRow')
+class DayResolutions extends Table {
+  DateTimeColumn get date => dateTime()();
+  TextColumn get kind => textEnum<DayResolutionKind>()();
+  DateTimeColumn get movedToDate => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {date};
 }
 
 /// A time series, not a profile field.

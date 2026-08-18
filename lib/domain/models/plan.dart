@@ -15,6 +15,23 @@ enum DayStatus {
   movedTo,
 }
 
+/// Why a gap was manually resolved (spec §9's ambient row: "Rest / travel /
+/// did it Thursday / add it now" — "add it now" isn't here because it just
+/// creates a real [Session], which resolves the gap without needing a
+/// record of its own).
+enum DayResolutionKind { rest, travel, movedTo }
+
+/// A user's answer to "what was this date?" — one row per resolved gap,
+/// keyed by the ORIGINAL scheduled date. Never inferred, always the result
+/// of an explicit tap (I2). [movedToDate] is set only for [DayResolutionKind.movedTo].
+class DayResolution {
+  final DateTime date;
+  final DayResolutionKind kind;
+  final DateTime? movedToDate;
+
+  const DayResolution({required this.date, required this.kind, this.movedToDate});
+}
+
 class PlannedExercise {
   final String exerciseId;
   final int order;

@@ -6,11 +6,12 @@ import 'package:uuid/uuid.dart';
 import '../../bridge/trigger_bridge.dart';
 import '../../domain/models/plan.dart';
 import '../../domain/models/session.dart';
+import '../../domain/rules/analytics.dart' show exerciseOverlap, kSameDayThreshold;
 import '../../domain/rules/home.dart';
 import '../../providers.dart';
 import '../../theme.dart';
 import '../../widgets/elapsed_pill.dart';
-import '../history/exercise_list_screen.dart';
+import '../history/history_screen.dart';
 import '../plan/week_screen.dart';
 import '../session/session_screen.dart' show SessionScreen;
 import 'ambient_banners.dart';
@@ -41,7 +42,7 @@ class HomeScreen extends ConsumerWidget {
                   IconButton(
                     icon: const Icon(Icons.show_chart, color: AppColors.ink3),
                     onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const ExerciseListScreen()),
+                      MaterialPageRoute(builder: (_) => const HistoryScreen()),
                     ),
                   ),
                   IconButton(
@@ -160,21 +161,34 @@ class _NoPlanYetView extends ConsumerWidget {
   }
 }
 
-class _RestDayView extends StatelessWidget {
+class _RestDayView extends ConsumerWidget {
   const _RestDayView({required this.state});
 
   final RestDay state;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final provisional = state.provisionalExerciseIds != null;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 34),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('REST', style: eyebrowStyle()),
+          Text(provisional ? 'LOOKS LIKE A PATTERN' : 'REST', style: eyebrowStyle()),
           const SizedBox(height: 4),
-          _title('Rest'),
+          if (state.provisionalExerciseIds != null) ...[
+            InkWell(
+              onTap: () => _confirmProvisionalDay(context, ref, state),
+              child: Row(
+                children: [
+                  _title('${state.provisionalDayName ?? 'Training day'}?'),
+                  const SizedBox(width: 8),
+                  Text('tap to confirm', style: monoStyle(fontSize: 11, color: AppColors.accentInk)),
+                ],
+              ),
+            ),
+          ] else
+            _title('Rest'),
           const SizedBox(height: 16),
           Container(height: 1, color: AppColors.line),
           const SizedBox(height: 16),
@@ -190,6 +204,47 @@ class _RestDayView extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Confirming writes a real [WorkoutDay]/[WeekPlan] slot immediately (I2:
+/// the guess is never applied on its own — only a tap does this). Reuses
+/// an existing day if the proposed exercises already overlap one (spec
+/// §10's "one WorkoutDay in two weekday slots" case), otherwise creates a
+/// bare new day the user can rename from the week screen.
+Future<void> _confirmProvisionalDay(BuildContext context, WidgetRef ref, RestDay state) async {
+  final proposed = state.provisionalExerciseIds;
+  if (proposed == null) return;
+  final plans = ref.read(planRepositoryProvider);
+  final existing = await plans.getAllWorkoutDays();
+
+  String dayId;
+  final match = existing.where((d) {
+    final ids = d.exercises.map((e) => e.exerciseId).toSet();
+    return ids.isNotEmpty && exerciseOverlap(ids, proposed) >= kSameDayThreshold;
+  });
+  if (match.isNotEmpty) {
+    dayId = match.first.id;
+  } else {
+    dayId = _uuid.v4();
+    await plans.upsertWorkoutDay(
+      WorkoutDay(
+        id: dayId,
+        name: state.provisionalDayName ?? 'New day',
+        exercises: [
+          for (final entry in proposed.indexed)
+            PlannedExercise(exerciseId: entry.$2, order: entry.$1),
+        ],
+      ),
+    );
+  }
+
+  final plan = await plans.getLatestWeekPlan(demoRoutineId);
+  final slots = {...?plan?.slots};
+  slots[weekdayOf(ref.read(nowProvider))] = dayId;
+  await plans.createWeekPlanVersion(
+    WeekPlan(routineId: demoRoutineId, version: (plan?.version ?? 0) + 1, slots: slots),
+  );
+  ref.invalidate(homeStateProvider);
 }
 
 class _KeyValueLine extends StatelessWidget {
@@ -392,17 +447,39 @@ class _AmbientBannerList extends ConsumerWidget {
             actionLabel: 'Got it',
             onAction: () => ref.read(capabilityOfferDismissedProvider.notifier).state = true,
           ),
+        if (banners.unresolvedGap != null)
+          _Banner(
+            text: '${DateFormat('EEE d MMM').format(banners.unresolvedGap!)} — no session logged.',
+            actionLabel: 'Resolve',
+            onAction: () async {
+              await showDayResolutionSheet(context, banners.unresolvedGap!);
+              ref.invalidate(ambientBannersProvider);
+            },
+            onDismiss: () {
+              final gap = banners.unresolvedGap!;
+              ref.read(dismissedGapDatesProvider.notifier).update((s) => {...s, gap});
+            },
+          ),
       ],
     );
   }
 }
 
 class _Banner extends StatelessWidget {
-  const _Banner({required this.text, required this.actionLabel, required this.onAction});
+  const _Banner({
+    required this.text,
+    required this.actionLabel,
+    required this.onAction,
+    this.onDismiss,
+  });
 
   final String text;
   final String actionLabel;
   final VoidCallback onAction;
+
+  /// Optional second, quieter action (I3: dismissible, never a modal) —
+  /// hides the banner for this app run without fabricating an answer.
+  final VoidCallback? onDismiss;
 
   @override
   Widget build(BuildContext context) {
@@ -420,6 +497,13 @@ class _Banner extends StatelessWidget {
             child: Text(text, style: const TextStyle(fontSize: 12, color: AppColors.ink2, height: 1.3)),
           ),
           const SizedBox(width: 8),
+          if (onDismiss != null)
+            IconButton(
+              icon: const Icon(Icons.close, size: 16, color: AppColors.ink3),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              onPressed: onDismiss,
+            ),
           TextButton(onPressed: onAction, child: Text(actionLabel)),
         ],
       ),
