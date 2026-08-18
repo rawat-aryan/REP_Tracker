@@ -5,9 +5,9 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/seed/exercise_seed.dart';
-import 'domain/models/plan.dart';
 import 'features/home/home_providers.dart';
 import 'features/home/home_screen.dart';
+import 'features/onboarding/identity_screen.dart';
 import 'features/session/session_controller.dart';
 import 'features/session/session_screen.dart';
 import 'providers.dart';
@@ -33,10 +33,9 @@ class RepTrackerApp extends StatelessWidget {
   }
 }
 
-/// No onboarding yet (milestone 07), so this seeds a demo "Legs" day
-/// scheduled for today and drops into [HomeScreen] — the real entry point
-/// as of milestone 05. Everything downstream (session start/resume) is
-/// driven from there now.
+/// Seeds the exercise catalog, then routes to onboarding (no [WeekPlan] has
+/// ever been written yet) or straight to [HomeScreen] — milestone 07's gate.
+/// Everything downstream (session start/resume) is driven from there.
 class _Bootstrap extends ConsumerStatefulWidget {
   const _Bootstrap();
 
@@ -46,6 +45,7 @@ class _Bootstrap extends ConsumerStatefulWidget {
 
 class _BootstrapState extends ConsumerState<_Bootstrap> with WidgetsBindingObserver {
   bool _ready = false;
+  bool _needsOnboarding = false;
 
   @override
   void initState() {
@@ -103,38 +103,14 @@ class _BootstrapState extends ConsumerState<_Bootstrap> with WidgetsBindingObser
     await seedIfNeeded(db, seedJson);
 
     final plans = ref.read(planRepositoryProvider);
-    if (await plans.getWorkoutDay(demoDayId) == null) {
-      await plans.upsertWorkoutDay(
-        const WorkoutDay(
-          id: demoDayId,
-          name: 'Legs',
-          exercises: [
-            PlannedExercise(exerciseId: 'hip_thrust', order: 0),
-            PlannedExercise(exerciseId: 'barbell_squat', order: 1),
-            PlannedExercise(
-              exerciseId: 'balancing_lunge',
-              order: 2,
-              defaultUnilateral: true,
-            ),
-            PlannedExercise(exerciseId: 'lying_leg_curl', order: 3),
-          ],
-        ),
-      );
-    }
-
-    if (await plans.getLatestWeekPlan(demoRoutineId) == null) {
-      await plans.createWeekPlanVersion(
-        WeekPlan(
-          routineId: demoRoutineId,
-          version: 1,
-          slots: {Weekday.values[DateTime.now().weekday - 1]: demoDayId},
-        ),
-      );
-    }
+    final hasPlan = await plans.getLatestWeekPlan(demoRoutineId) != null;
 
     if (!mounted) return;
-    setState(() => _ready = true);
-    await _drainAndMaybeLand();
+    setState(() {
+      _needsOnboarding = !hasPlan;
+      _ready = true;
+    });
+    if (hasPlan) await _drainAndMaybeLand();
   }
 
   @override
@@ -142,6 +118,6 @@ class _BootstrapState extends ConsumerState<_Bootstrap> with WidgetsBindingObser
     if (!_ready) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    return const HomeScreen();
+    return _needsOnboarding ? const IdentityScreen() : const HomeScreen();
   }
 }

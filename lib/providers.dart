@@ -4,9 +4,11 @@ import 'bridge/android_trigger_bridge.dart';
 import 'bridge/trigger_bridge.dart';
 import 'bridge/trigger_drain_service.dart';
 import 'data/database.dart';
+import 'data/repositories/bodyweight_repository.dart';
 import 'data/repositories/drift_prefill_service.dart';
 import 'data/repositories/exercise_repository.dart';
 import 'data/repositories/plan_repository.dart';
+import 'data/repositories/profile_repository.dart';
 import 'data/repositories/session_repository.dart';
 import 'domain/models/exercise.dart';
 import 'domain/models/plan.dart';
@@ -37,6 +39,14 @@ final sessionRepositoryProvider = Provider<SessionRepository>(
 
 final planRepositoryProvider = Provider<PlanRepository>(
   (ref) => PlanRepository(ref.watch(databaseProvider)),
+);
+
+final profileRepositoryProvider = Provider<ProfileRepository>(
+  (ref) => ProfileRepository(ref.watch(databaseProvider)),
+);
+
+final bodyweightRepositoryProvider = Provider<BodyweightRepository>(
+  (ref) => BodyweightRepository(ref.watch(databaseProvider)),
 );
 
 final prefillServiceProvider = Provider<PrefillService>(

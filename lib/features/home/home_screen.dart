@@ -10,6 +10,7 @@ import '../../domain/rules/home.dart';
 import '../../providers.dart';
 import '../../theme.dart';
 import '../../widgets/elapsed_pill.dart';
+import '../plan/week_screen.dart';
 import '../session/session_screen.dart' show SessionScreen;
 import 'ambient_banners.dart';
 import 'home_providers.dart';
@@ -33,6 +34,18 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  icon: const Icon(Icons.settings_outlined, color: AppColors.ink3),
+                  onPressed: () async {
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const WeekScreen()),
+                    );
+                    ref.invalidate(homeStateProvider);
+                  },
+                ),
+              ),
               const _AmbientBannerList(),
               Expanded(
                 child: stateAsync.when(

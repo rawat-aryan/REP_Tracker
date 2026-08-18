@@ -2,6 +2,76 @@
 
 Resume log for milestone work. One line per step: what's done, what's next.
 
+## Milestone 07 — onboarding
+
+- 2026-08-19 — Read CLAUDE.md, milestone 07 spec, spec §4/§4.1, and
+  screens.html flow 01. Built the three-screen flow plus the shared
+  week/day-editor screen it hands off into:
+  - `lib/domain/rules/onboarding.dart` — `Archetype` enum (ppl/broSplit/
+    twoMuscle/hybrid) + pure `suggestedWeekMap`. Nothing about the archetype
+    is ever persisted (I2, spec's "no SplitType enum") — it's translated
+    into real `WorkoutDay`/`WeekPlan` rows the moment a choice is made, then
+    discarded.
+  - `lib/data/repositories/profile_repository.dart` — name get/set, reusing
+    the existing `SeedMeta` key-value table instead of a new one-column
+    table (nothing downstream currently reads the name back; storing it is
+    still worth doing since spec §4 asks for the field, just via the
+    cheapest table that already exists).
+  - `lib/features/onboarding/identity_screen.dart` +
+    `archetype_screen.dart` — steps 1-2. Both fields on step 1 are optional
+    (I4 — blank name/bodyweight still continues). Step 2's four options and
+    "Skip this" all funnel through one `_choose` that builds the day-name
+    map, creates `WorkoutDay` rows for each distinct name, and writes
+    `WeekPlan` version 1 in one go — tapping an option finishes onboarding's
+    planning step in a single tap, no separate "confirm" screen.
+  - `lib/features/plan/week_screen.dart` — the week grid (spec §4.1). One
+    widget, two call sites: `WeekScreen(onboarding: true)` from the
+    archetype step (shows "Done", finishes via `pushAndRemoveUntil` into
+    `HomeScreen`) and `WeekScreen()` from the home screen's new settings
+    icon (shows "Close", pops back) — literally the same code path spec
+    §4.1 requires, not two screens dressed alike. Supports everything the
+    "later" phase of the spec's table asks for: rename a day (dialog),
+    assign an existing day or create a new one to a rest slot (bottom
+    sheet), mark a day back to rest (new `WeekPlan` version — slots are
+    versioned, `WorkoutDay` content is a plain upsert since sessions never
+    snapshot the exercise list, only `routineId`+`version`), add/remove
+    exercises and edit target sets (dialog with a +/- stepper). Rest days
+    render as a dashed-outline chip per spec, never filled.
+  - **Scope cut**: no drag-to-reorder for a day's exercise list — not
+    needed for the milestone's Done-when, and removing + re-adding covers
+    it in the meantime. Flagged here rather than built speculatively.
+  - `lib/main.dart` — replaced the milestone 04/05 demo-day bootstrap with
+    the real gate: seed the catalog, then check whether any `WeekPlan`
+    exists for `demoRoutineId` (still just "the one routine's id" for v1,
+    despite the name) — none → `IdentityScreen`, one → straight to
+    `HomeScreen`. No separate "onboarding complete" flag needed; a written
+    plan already is that flag.
+  - `lib/features/home/home_screen.dart` — added a settings gear icon
+    (top-right) that pushes `WeekScreen()` and invalidates
+    `homeStateProvider` on return, so a plan edit is reflected immediately.
+  - `flutter analyze` clean, `flutter test` 43/43 green — 4 new domain
+    tests (`test/domain/onboarding_rules_test.dart`: every archetype covers
+    all 7 weekdays, hybrid is fully blank, PPL/bro-split spot checks) and 1
+    new widget test (`test/features/onboarding/onboarding_flow_test.dart`)
+    that is literally the milestone's Done-when end to end: identity →
+    skip → archetype → "Build my own" → week screen shows "Rest day" for
+    the fully blank hybrid grid → Done → lands on `HomeScreen` showing
+    "Rest". Also manually driven on the Pixel/Android emulator with a fresh
+    install: identity (both permission dialogs from milestone 06 are
+    pre-existing, unrelated to this milestone) → PPL archetype → week
+    screen correctly pre-selected today's real weekday (Wednesday) showing
+    "Legs" with Saturday solid and Sunday dashed exactly per the PPL map →
+    added Hip thrust via the exercise search sheet → Done → landed on the
+    real home screen showing "WED 19 AUG / Legs / Hip thrust · 3 sets /
+    Start". Reopened via the new settings gear and confirmed the identical
+    screen renders with "Close" instead of "Done" and the same persisted
+    data — the literal "same code path from settings" Done-when.
+  - **Not built**: iOS untouched (same ADR-005 scope cut carried forward,
+    this milestone has no native surface anyway), and the `user_name`
+    value is captured but nothing in the app currently displays it back —
+    flagged in the repository's own doc comment rather than building a
+    profile screen speculatively.
+
 ## Milestone 06 — ambient surfaces (Android only)
 
 - 2026-08-18 — Read CLAUDE.md, milestone 06 spec, spec §7/§16, and the
