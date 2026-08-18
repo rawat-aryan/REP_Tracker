@@ -24,7 +24,9 @@ android {
         applicationId = "com.aryanrawat.rep_tracker"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // CLAUDE.md targets Android 13+ (API 33) — also gives java.time on
+        // the trigger layer without core-library desugaring.
+        minSdk = 33
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

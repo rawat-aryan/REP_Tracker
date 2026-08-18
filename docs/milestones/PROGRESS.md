@@ -59,3 +59,67 @@ Resume log for milestone work. One line per step: what's done, what's next.
   - **Next**: milestone 04, session screen — first place `seedIfNeeded`,
     `AppDatabase`, and the repositories actually get wired up behind
     Riverpod providers.
+
+## Milestone 02 — Android trigger spike (native, no Flutter UI)
+
+- 2026-08-18 — Read CLAUDE.md, milestone 02 spec, spec §6/§7/§16, and the
+  existing `TriggerBridge`/`TriggerEvent`/`FakeTriggerBridge` contract from
+  milestone 03. Drafted plan, presented to user. **Next: awaiting
+  go-ahead before writing any code.**
+- 2026-08-18 — User approved. Built the native trigger layer:
+  - `ADR-004` — documents the one deliberate exception to "no state held in
+    the trigger": the foreground service keeps an in-memory running/
+    not-running boolean (never written to `context.json`) so the toggle
+    works correctly across repeated presses while the app stays dead the
+    whole workout. Seeded from `context.json`'s `activeSet` on service
+    (re)start; resets on service destroy.
+  - `android/.../TriggerJournal.kt` — reads `context.json`
+    (`context.filesDir`, read-only from native), synchronized append to
+    `events.jsonl`. `org.json.JSONObject`, no new dependency.
+  - `android/.../TriggerToggleState.kt` — the ADR-004 in-memory flag.
+  - `android/.../TriggerForegroundService.kt` — `foregroundServiceType="health"`,
+    two-action notification (toggle + `MORE`), `ServiceCompat.startForeground`.
+  - `android/.../TriggerActionReceiver.kt` — the toggle's `BroadcastReceiver`.
+    Deliberately does **not** bring the app forward on `setEnded` for this
+    milestone — no rep-entry screen exists yet to land on; §7's "setEnded
+    brings the app forward" gets wired in once one does.
+  - `android/.../TriggerQsTileService.kt` — same toggle, Tier 1 parity layer.
+  - `android/.../MainActivity.kt` — `rep_tracker/trigger` MethodChannel
+    (ambient-surface lifecycle + `availableTiers` only — never file I/O,
+    that stays direct on both sides per §7's two-writer rule); requests
+    `POST_NOTIFICATIONS` at launch (no settings screen yet to trigger it
+    from).
+  - `AndroidManifest.xml` — `FOREGROUND_SERVICE`/`FOREGROUND_SERVICE_HEALTH`/
+    `POST_NOTIFICATIONS` permissions; service/receiver/tile declarations.
+  - `minSdk` bumped 21→33 to match CLAUDE.md's Android 13+ target (also
+    means `java.time` is usable natively in the trigger layer, no desugaring
+    needed).
+  - `lib/bridge/android_trigger_bridge.dart` — the real `TriggerBridge`.
+    `drain()`/`writeContext()`/`clearContext()` are plain file I/O against
+    `getApplicationDocumentsDirectory()`, which resolves to the same
+    `context.filesDir` path Kotlin uses — no channel round-trip for the file
+    half of the contract, only the ambient-surface calls go over
+    `MethodChannel`.
+  - **Scope cut, flagged to user before building**: dropped the rep
+    quick-pick notification action from the milestone doc's build list.
+    `TriggerEventType` only has `setStarted`/`setEnded` — no way to carry a
+    rep count over the journal — and there's no rep-entry screen yet to open
+    into either way, so it would currently be an identical no-op to `MORE`.
+    Trivial to add once milestone 04+ builds that screen.
+  - Ported all 5 `FakeTriggerBridge` tests onto `AndroidTriggerBridge`'s
+    file-I/O half (`test/bridge/android_trigger_bridge_test.dart`), faking
+    `path_provider`'s platform channel so they run under plain `flutter
+    test` — idempotent drain, truncation, phantom detection, journal-
+    timestamp duration all pass. The `MethodChannel` half (ambient surface,
+    tier query) has no desktop fake; that's what physical-device
+    verification covers.
+  - `flutter build apk --debug` succeeds (took ~20 min — first build under
+    the new AGP/Kotlin toolchain + `minSdk` bump, not a real problem).
+    `flutter analyze` clean, `flutter test` all 27 green.
+  - **Not yet done — needs the user, on their own phone**: the milestone's
+    actual Done-when (notification survives app swipe, `END SET` from the
+    **locked** screen appends without opening the app, QS tile fires the
+    same toggle, verified physically). Agent tooling can't press a real
+    lock-screen button. Gave the user `adb`/`flutter run` steps to check
+    this themselves — awaiting that confirmation before calling milestone
+    02 done.

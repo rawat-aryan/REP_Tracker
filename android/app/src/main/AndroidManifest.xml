@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="rep_tracker"
         android:name="${applicationName}"
@@ -30,6 +33,25 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Milestone 02: the trigger layer. See docs/milestones/02-android-trigger-spike.md. -->
+        <service
+            android:name=".TriggerForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="health" />
+        <receiver
+            android:name=".TriggerActionReceiver"
+            android:exported="false" />
+        <service
+            android:name=".TriggerQsTileService"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="REP Tracker"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE"/>
+            </intent-filter>
+        </service>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
