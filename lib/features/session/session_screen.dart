@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -9,20 +7,37 @@ import '../../domain/models/load.dart';
 import '../../domain/models/session.dart';
 import '../../domain/models/workout_set.dart';
 import '../../providers.dart';
+import '../../theme.dart';
+import '../../widgets/elapsed_pill.dart';
 import 'exercise_picker_sheet.dart';
 import 'rep_entry_sheet.dart';
 import 'session_controller.dart';
 
 /// The session ledger (milestone 04, spec §6, screens.html flow 03). Manual
-/// start/end only — see [SessionController] for why.
-class SessionScreen extends ConsumerWidget {
-  const SessionScreen({super.key, required this.sessionId});
+/// start/end only — see [SessionController] for why. Visual language is
+/// lifted straight from screens.html's `.setrow`/`.sethead`/`.hollow` rules
+/// (milestone 05 visual pass).
+class SessionScreen extends ConsumerStatefulWidget {
+  const SessionScreen({super.key, required this.sessionId, this.autoOpenExerciseId});
 
   final String sessionId;
 
+  /// Set when the app was just brought forward by a native `setEnded`
+  /// (milestone 06 "must hold": setEnded lands on rep entry for that set).
+  /// Opens the existing overflow sheet once, the same UI a manual tap on a
+  /// pendingReps row already uses — no separate "trigger landing" screen.
+  final String? autoOpenExerciseId;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final sessionAsync = ref.watch(sessionControllerProvider(sessionId));
+  ConsumerState<SessionScreen> createState() => _SessionScreenState();
+}
+
+class _SessionScreenState extends ConsumerState<SessionScreen> {
+  bool _autoOpened = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final sessionAsync = ref.watch(sessionControllerProvider(widget.sessionId));
     final exercisesAsync = ref.watch(allExercisesProvider);
 
     return Scaffold(
@@ -33,15 +48,40 @@ class SessionScreen extends ConsumerWidget {
           data: (session) => exercisesAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('$e')),
-            data: (byId) => _SessionBody(
-              sessionId: sessionId,
-              session: session,
-              exercisesById: byId,
-            ),
+            data: (byId) {
+              _maybeAutoOpenRepEntry(session, byId);
+              return _SessionBody(
+                sessionId: widget.sessionId,
+                session: session,
+                exercisesById: byId,
+              );
+            },
           ),
         ),
       ),
     );
+  }
+
+  void _maybeAutoOpenRepEntry(Session session, Map<String, Exercise> byId) {
+    final exerciseId = widget.autoOpenExerciseId;
+    if (_autoOpened || exerciseId == null) return;
+    final matches = session.exercises.where((e) => e.exerciseId == exerciseId);
+    if (matches.isEmpty || matches.first.sets.isEmpty) return;
+    final lastSet = matches.first.sets.last;
+    if (lastSet.endedAt == null || lastSet.hasReps) return;
+    final exercise = byId[exerciseId];
+    if (exercise == null) return;
+    _autoOpened = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showRepEntrySheet(
+        context,
+        sessionId: widget.sessionId,
+        exerciseId: exerciseId,
+        set: lastSet,
+        exercise: exercise,
+      );
+    });
   }
 }
 
@@ -62,40 +102,56 @@ class _SessionBody extends ConsumerWidget {
       ..sort((a, b) => a.planOrder.compareTo(b.planOrder));
     final outstanding =
         sorted.where((e) => e.progress != ExerciseProgress.done).length;
+    final dayId = session.workoutDayId;
+    final dayName =
+        dayId == null ? null : ref.watch(workoutDayProvider(dayId)).valueOrNull?.name;
 
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          padding: const EdgeInsets.fromLTRB(10, 12, 16, 4),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back, size: 20),
+                onPressed: () => Navigator.of(context).maybePop(),
+              ),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Session',
-                      style: Theme.of(context).textTheme.headlineSmall,
+                      dayName ?? 'Session',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.02,
+                        color: AppColors.ink,
+                      ),
                     ),
                     Text(
                       '${DateFormat('d MMM').format(session.date)} · '
                       '$outstanding of ${sorted.length} outstanding',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: const TextStyle(fontSize: 12.5, color: AppColors.ink3),
                     ),
                   ],
                 ),
               ),
               if (session.endedAt == null)
-                _ElapsedPill(since: session.startedAt)
+                ElapsedPill(since: session.startedAt)
               else
-                const Text('Done', style: TextStyle(color: Colors.green)),
+                Text(
+                  '${session.endedAt!.difference(session.startedAt).inMinutes} min',
+                  style: monoStyle(fontSize: 11, color: AppColors.ink3),
+                ),
             ],
           ),
         ),
         const Divider(height: 1),
         Expanded(
           child: ListView(
+            padding: const EdgeInsets.only(bottom: 8),
             children: [
               for (final se in sorted)
                 _ExerciseSection(
@@ -110,13 +166,18 @@ class _SessionBody extends ConsumerWidget {
                   sessionExercise: se,
                   isCurrent: session.currentExerciseId == se.exerciseId,
                 ),
-              ListTile(
-                leading: const Icon(Icons.add),
-                title: const Text('Add exercise'),
+              InkWell(
                 onTap: () => showExercisePickerSheet(
                   context,
                   sessionId: sessionId,
                   session: session,
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: Text(
+                    '+  Add exercise',
+                    style: TextStyle(fontSize: 13, color: AppColors.ink2),
+                  ),
                 ),
               ),
             ],
@@ -124,12 +185,15 @@ class _SessionBody extends ConsumerWidget {
         ),
         if (session.endedAt == null)
           Padding(
-            padding: const EdgeInsets.all(12),
-            child: OutlinedButton(
-              onPressed: () => ref
-                  .read(sessionControllerProvider(sessionId).notifier)
-                  .endSession(),
-              child: const Text('End session'),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => ref
+                    .read(sessionControllerProvider(sessionId).notifier)
+                    .endSession(),
+                child: const Text('End session'),
+              ),
             ),
           ),
       ],
@@ -152,25 +216,17 @@ class _ExerciseSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final controller =
-        ref.read(sessionControllerProvider(sessionId).notifier);
+    final controller = ref.read(sessionControllerProvider(sessionId).notifier);
     final sets = sessionExercise.sets;
     final lastSet = sets.isEmpty ? null : sets.last;
     final running = lastSet != null && lastSet.endedAt == null;
     final pendingReps =
         lastSet != null && lastSet.endedAt != null && !lastSet.hasReps;
     final doneSets = pendingReps || running ? sets.sublist(0, sets.length - 1) : sets;
+    final hasLiveRow = running || pendingReps || isCurrent;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Theme.of(context).dividerColor),
-        ),
-        color: isCurrent
-            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.05)
-            : null,
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -180,18 +236,23 @@ class _ExerciseSection extends ConsumerWidget {
               children: [
                 Text(
                   exercise.name,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.ink,
+                  ),
                 ),
                 if (exercise.defaultExecution == Execution.unilateral) ...[
                   const SizedBox(width: 6),
-                  const _Tag('uni'),
+                  const AppTag('uni'),
                 ],
               ],
             ),
           ),
+          if (doneSets.isNotEmpty || hasLiveRow) ...[
+            const SizedBox(height: 7),
+            const _SetHead(),
+          ],
           for (final s in doneSets) _SetRow(sessionId: sessionId, exercise: exercise, set: s),
           if (running)
             _RunningRow(sessionId: sessionId, exercise: exercise, set: lastSet)
@@ -205,6 +266,51 @@ class _ExerciseSection extends ConsumerWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _SetHead extends StatelessWidget {
+  const _SetHead();
+
+  @override
+  Widget build(BuildContext context) {
+    const style = TextStyle(
+      fontSize: 9.5,
+      letterSpacing: 0.9,
+      color: AppColors.ink3,
+      fontWeight: FontWeight.w500,
+    );
+    return const Padding(
+      padding: EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          SizedBox(width: 18),
+          Expanded(child: Text('WEIGHT', style: style)),
+          Expanded(child: Text('REPS', style: style)),
+        ],
+      ),
+    );
+  }
+}
+
+/// The current-set row treatment — screens.html's `.setrow.live`: an
+/// accent-tinted pill instead of the plain top-border rule.
+class _LiveRow extends StatelessWidget {
+  const _LiveRow({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.accentBg,
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: child,
     );
   }
 }
@@ -226,16 +332,52 @@ class _SetRow extends StatelessWidget {
         set: set,
         exercise: exercise,
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: AppColors.line)),
+        ),
         child: Row(
           children: [
-            SizedBox(width: 20, child: Text('${set.index}')),
-            Expanded(child: Text(_formatWeight(set))),
-            Expanded(child: Text(_formatReps(set))),
-            for (final t in set.tags) _Tag(t.name),
+            SizedBox(width: 18, child: Text('${set.index}', style: monoStyle(fontSize: 11, color: AppColors.ink3))),
+            Expanded(
+              child: _LoadText(
+                load: set.segments.isEmpty ? null : set.segments.first.load,
+              ),
+            ),
+            Expanded(child: Text(_formatReps(set), style: monoStyle(fontSize: 13))),
+            for (final t in set.tags) AppTag(t.name),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// A weight value with its `/side` suffix rendered smaller and muted, per
+/// screens.html's `.c-w` + `.side` pairing. Used for both a saved set's
+/// load and a not-yet-started row's predicted load.
+class _LoadText extends StatelessWidget {
+  const _LoadText({required this.load, this.color = AppColors.ink});
+
+  final Load? load;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    if (load == null) {
+      return Text('—', style: monoStyle(fontSize: 13, color: color));
+    }
+    return RichText(
+      text: TextSpan(
+        children: [
+          TextSpan(text: _formatLoad(load!), style: monoStyle(fontSize: 13, color: color)),
+          if (load!.scope == LoadScope.perLimb)
+            const TextSpan(
+              text: ' /side',
+              style: TextStyle(fontSize: 9.5, color: AppColors.ink3),
+            ),
+        ],
       ),
     );
   }
@@ -262,22 +404,18 @@ class _StartRow extends ConsumerWidget {
           ),
       builder: (context, snapshot) {
         final predicted = snapshot.data;
-        return Row(
-          children: [
-            SizedBox(width: 20, child: Text('$nextIndex')),
-            Expanded(
-              child: Text(
-                predicted == null ? '—' : _formatLoad(predicted),
-                style: const TextStyle(color: Colors.grey),
+        return _LiveRow(
+          child: Row(
+            children: [
+              SizedBox(width: 18, child: Text('$nextIndex', style: monoStyle(fontSize: 11, color: AppColors.ink3))),
+              Expanded(child: _LoadText(load: predicted, color: AppColors.ink2)),
+              TextButton(
+                onPressed: () =>
+                    ref.read(sessionControllerProvider(sessionId).notifier).startSet(exercise.id),
+                child: const Text('Start set'),
               ),
-            ),
-            TextButton(
-              onPressed: () => ref
-                  .read(sessionControllerProvider(sessionId).notifier)
-                  .startSet(exercise.id),
-              child: const Text('Start set'),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -297,18 +435,27 @@ class _RunningRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Row(
-      children: [
-        SizedBox(width: 20, child: Text('${set.index}')),
-        Expanded(child: Text(_formatWeight(set), style: const TextStyle(color: Colors.blue))),
-        _ElapsedPill(since: set.startedAt!),
-        TextButton(
-          onPressed: () => ref
-              .read(sessionControllerProvider(sessionId).notifier)
-              .endSet(exercise.id),
-          child: const Text('End set'),
-        ),
-      ],
+    return _LiveRow(
+      child: Row(
+        children: [
+          SizedBox(
+            width: 18,
+            child: Text('${set.index}', style: monoStyle(fontSize: 11, color: AppColors.accentInk)),
+          ),
+          Expanded(
+            child: _LoadText(
+              load: set.segments.isEmpty ? null : set.segments.first.load,
+              color: AppColors.accentInk,
+            ),
+          ),
+          ElapsedPill(since: set.startedAt!),
+          TextButton(
+            onPressed: () =>
+                ref.read(sessionControllerProvider(sessionId).notifier).endSet(exercise.id),
+            child: const Text('End set'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -335,113 +482,84 @@ class _PendingRepsRow extends ConsumerWidget {
         final predictedText = predicted == null
             ? null
             : (unilateral ? 'L$predicted R$predicted' : '$predicted');
-        return Row(
-          children: [
-            SizedBox(width: 20, child: Text('${set.index}')),
-            Expanded(child: Text(_formatWeight(set))),
-            Expanded(
-              child: predictedText == null
-                  ? const Text('log reps', style: TextStyle(color: Colors.grey))
-                  : InkWell(
-                      onTap: () => controller.acceptPrediction(exercise.id, predicted!),
-                      child: Text(predictedText, style: _hollowStyle(context)),
-                    ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.more_horiz),
-              onPressed: () => showRepEntrySheet(
-                context,
-                sessionId: sessionId,
-                exerciseId: exercise.id,
-                set: set,
-                exercise: exercise,
+        return _LiveRow(
+          child: Row(
+            children: [
+              SizedBox(
+                width: 18,
+                child: Text('${set.index}', style: monoStyle(fontSize: 11, color: AppColors.accentInk)),
               ),
+              Expanded(
+            child: _LoadText(
+              load: set.segments.isEmpty ? null : set.segments.first.load,
+              color: AppColors.accentInk,
             ),
-          ],
+          ),
+              Expanded(
+                child: predictedText == null
+                    ? Text('log reps', style: monoStyle(fontSize: 13, color: AppColors.ink3))
+                    : InkWell(
+                        onTap: () => controller.acceptPrediction(exercise.id, predicted!),
+                        child: Text(predictedText, style: _hollowStyle()),
+                      ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.more_horiz, size: 20),
+                onPressed: () => showRepEntrySheet(
+                  context,
+                  sessionId: sessionId,
+                  exerciseId: exercise.id,
+                  set: set,
+                  exercise: exercise,
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
   }
 }
 
-class _ElapsedPill extends StatefulWidget {
-  const _ElapsedPill({required this.since});
-
-  final DateTime since;
-
-  @override
-  State<_ElapsedPill> createState() => _ElapsedPillState();
-}
-
-class _ElapsedPillState extends State<_ElapsedPill> {
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final d = DateTime.now().difference(widget.since);
-    final text = '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(text, style: const TextStyle(fontFeatures: [FontFeature.tabularFigures()])),
-    );
-  }
-}
-
-class _Tag extends StatelessWidget {
-  const _Tag(this.label);
+/// `.tag` — a quiet outlined chip, used for both the exercise-level "uni"
+/// marker and per-set tags (warmup/dropSet/toFailure).
+class AppTag extends StatelessWidget {
+  const AppTag(this.label, {super.key});
 
   final String label;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4),
+      padding: const EdgeInsets.only(left: 5),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: AppColors.lineStrong),
+          borderRadius: BorderRadius.circular(4),
         ),
-        child: Text(label, style: const TextStyle(fontSize: 10)),
+        child: Text(label, style: const TextStyle(fontSize: 9, color: AppColors.ink3)),
       ),
     );
   }
 }
 
-TextStyle _hollowStyle(BuildContext context) => TextStyle(
-      fontWeight: FontWeight.w600,
+/// `.hollow` — transparent fill, a thin ink3 stroke. The predicted-value
+/// treatment: visible as an outline, not committed until tapped.
+TextStyle _hollowStyle() => TextStyle(
+      fontSize: 13,
+      fontFamily: monoStyle().fontFamily,
+      fontFeatures: const [FontFeature.tabularFigures()],
       foreground: Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1
-        ..color = Theme.of(context).colorScheme.primary,
+        ..strokeWidth = 0.7
+        ..color = AppColors.ink3,
     );
 
 String _formatLoad(Load load) {
   if (load.value == null) return load.isBodyweight ? 'bw' : '—';
   final v = load.value!;
-  final text = v == v.roundToDouble() ? v.toInt().toString() : v.toString();
-  return load.scope == LoadScope.perLimb ? '$text /side' : text;
-}
-
-String _formatWeight(WorkoutSet set) {
-  if (set.segments.isEmpty) return '—';
-  return _formatLoad(set.segments.first.load);
+  return v == v.roundToDouble() ? v.toInt().toString() : v.toString();
 }
 
 String _formatReps(WorkoutSet set) {

@@ -1,15 +1,18 @@
 package com.aryanrawat.rep_tracker
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
 
 /**
  * Tier 0 ambient surface (§16). Ongoing notification with the toggle action
@@ -49,11 +52,28 @@ class TriggerForegroundService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
+        // The OS additionally requires ACTIVITY_RECOGNITION (or another
+        // health-adjacent permission) to be *granted*, not just declared,
+        // before it will let a "health"-typed FGS start — see the manifest
+        // comment. Denied/not-yet-answered must degrade to the dataSync
+        // fallback type (also declared on the service), never crash the
+        // app — a permission the user hasn't granted yet is an ordinary
+        // runtime condition, not a bug. "type none" is not itself a legal
+        // fallback: the OS rejects starting with no type at all once the
+        // manifest declares specific types.
+        val canUseHealthType = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACTIVITY_RECOGNITION,
+        ) == PackageManager.PERMISSION_GRANTED
         ServiceCompat.startForeground(
             this,
             NOTIFICATION_ID,
             buildNotification(),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH,
+            if (canUseHealthType) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH
+            } else {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            },
         )
         return START_STICKY
     }

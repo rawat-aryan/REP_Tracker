@@ -6,10 +6,12 @@ import android.content.Intent
 
 /**
  * The notification's toggle button. Reads/flips [TriggerToggleState],
- * appends the matching event via [TriggerJournal] — never opens the app
- * (§7's start/end asymmetry is deferred until a rep-entry screen exists to
- * open into, see ADR-004 / milestone 02 plan). `MORE` is a separate
+ * appends the matching event via [TriggerJournal]. `MORE` is a separate
  * `PendingIntent.getActivity` on the notification itself, not routed here.
+ *
+ * Milestone 06: a press that just appended `setEnded` (the rep-entry screen
+ * now exists, so §7's start/end asymmetry is no longer deferred — see
+ * [TriggerAppLauncher]) brings the app forward.
  */
 class TriggerActionReceiver : BroadcastReceiver() {
     companion object {
@@ -19,7 +21,7 @@ class TriggerActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != ACTION_TOGGLE) return
 
-        TriggerToggleState.toggle(context)
+        val runningNow = TriggerToggleState.toggle(context)
 
         if (TriggerForegroundService.isRunning) {
             context.startForegroundService(
@@ -27,5 +29,7 @@ class TriggerActionReceiver : BroadcastReceiver() {
                     .setAction(TriggerForegroundService.ACTION_REFRESH),
             )
         }
+
+        if (!runningNow) TriggerAppLauncher.bringForward(context)
     }
 }

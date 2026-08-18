@@ -22,7 +22,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        requestNotificationPermissionIfNeeded()
+        requestTriggerPermissionsIfNeeded()
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -47,13 +47,22 @@ class MainActivity : FlutterActivity() {
             }
     }
 
-    /** No settings screen exists yet to prompt this from — ask once at
-     * launch, same as any Android 13+ app must. */
-    private fun requestNotificationPermissionIfNeeded() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
+    /** No settings screen exists yet to prompt these from — ask once at
+     * launch. Both requested in one call: firing `requestPermissions`
+     * twice back-to-back in `onCreate` lets the second call silently
+     * supersede the first before its dialog ever shows. POST_NOTIFICATIONS
+     * is the standard Android 13+ ask; ACTIVITY_RECOGNITION is required for
+     * `foregroundServiceType="health"` to be allowed to start at all on
+     * this SDK — see the manifest comment. */
+    private fun requestTriggerPermissionsIfNeeded() {
+        val needed = listOf(
+            Manifest.permission.POST_NOTIFICATIONS,
+            Manifest.permission.ACTIVITY_RECOGNITION,
+        ).filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (needed.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, needed.toTypedArray(), 0)
         }
     }
 }

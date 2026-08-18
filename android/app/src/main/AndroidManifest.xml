@@ -2,6 +2,19 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Milestone 06: a "health"-type foreground service also needs one of a
+         fixed set of data-access permissions granted at runtime, or the OS
+         refuses to start it (SecurityException at startForeground). This
+         app reads none of the actual health sensors on that list —
+         ACTIVITY_RECOGNITION is the closest honest fit for "this is a
+         workout timer," not a claim about reading fitness data. -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <!-- Fallback type for the window before the user has granted (or has
+         denied) ACTIVITY_RECOGNITION — the OS also rejects starting a
+         manifest-declared-typed service with type "none" at runtime, so
+         the service needs a second declared type it can always legally
+         use. dataSync needs only this normal (non-runtime) permission. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
     <application
         android:label="rep_tracker"
         android:name="${applicationName}"
@@ -38,7 +51,7 @@
         <service
             android:name=".TriggerForegroundService"
             android:exported="false"
-            android:foregroundServiceType="health" />
+            android:foregroundServiceType="health|dataSync" />
         <receiver
             android:name=".TriggerActionReceiver"
             android:exported="false" />

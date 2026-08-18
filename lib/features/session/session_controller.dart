@@ -1,15 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 
+import '../../bridge/trigger_apply.dart';
+import '../../bridge/trigger_bridge.dart';
 import '../../data/repositories/exercise_repository.dart';
+import '../../data/repositories/plan_repository.dart';
 import '../../data/repositories/session_repository.dart';
-import '../../domain/models/load.dart';
+import '../../domain/models/load.dart' show Execution;
 import '../../domain/models/session.dart';
 import '../../domain/models/workout_set.dart';
 import '../../domain/rules/prefill.dart';
 import '../../providers.dart';
-
-const _uuid = Uuid();
 
 final sessionControllerProvider = StateNotifierProvider.family<
     SessionController, AsyncValue<Session>, String>((ref, sessionId) {
@@ -17,7 +17,9 @@ final sessionControllerProvider = StateNotifierProvider.family<
     sessionId: sessionId,
     sessions: ref.watch(sessionRepositoryProvider),
     exercises: ref.watch(exerciseRepositoryProvider),
+    plans: ref.watch(planRepositoryProvider),
     prefill: ref.watch(prefillServiceProvider),
+    bridge: ref.watch(triggerBridgeProvider),
   );
 });
 
@@ -31,10 +33,14 @@ class SessionController extends StateNotifier<AsyncValue<Session>> {
     required this.sessionId,
     required SessionRepository sessions,
     required ExerciseRepository exercises,
+    required PlanRepository plans,
     required PrefillService prefill,
+    required TriggerBridge bridge,
   })  : _sessions = sessions,
         _exercises = exercises,
+        _plans = plans,
         _prefill = prefill,
+        _bridge = bridge,
         super(const AsyncValue.loading()) {
     _reload();
   }
@@ -42,15 +48,42 @@ class SessionController extends StateNotifier<AsyncValue<Session>> {
   final String sessionId;
   final SessionRepository _sessions;
   final ExerciseRepository _exercises;
+  final PlanRepository _plans;
   final PrefillService _prefill;
+  final TriggerBridge _bridge;
 
   Session get _session => state.value!;
 
   Future<void> _reload() async {
     final session = await _sessions.getById(sessionId);
-    state = session == null
-        ? AsyncValue.error('Session $sessionId not found', StackTrace.current)
-        : AsyncValue.data(session);
+    if (session == null) {
+      state = AsyncValue.error('Session $sessionId not found', StackTrace.current);
+      return;
+    }
+    state = AsyncValue.data(session);
+    if (session.endedAt == null) await _syncAmbient(session);
+  }
+
+  /// Publishes the current state to the ambient card (§16 Tier 0) — every
+  /// state change that could affect it goes through here. Best-effort: a
+  /// notification-channel failure must never block the actual set write
+  /// (I5/I6 concern the database, not the ambient surface).
+  Future<void> _syncAmbient(Session session) async {
+    try {
+      final dayName = session.workoutDayId == null
+          ? 'Workout'
+          : (await _plans.getWorkoutDay(session.workoutDayId!))?.name ?? 'Workout';
+      await _bridge.updateAmbientSurface(
+        await buildTriggerContext(
+          session: session,
+          exercises: _exercises,
+          prefill: _prefill,
+          dayName: dayName,
+        ),
+      );
+    } catch (_) {
+      // Ambient surface is a convenience layer, not the source of truth.
+    }
   }
 
   SessionExercise _exerciseIn(Session session, String exerciseId) =>
@@ -60,38 +93,13 @@ class SessionController extends StateNotifier<AsyncValue<Session>> {
   /// prefilled load and no reps — a crash right after this tap loses
   /// nothing (I5).
   Future<void> startSet(String exerciseId) async {
-    final session = _session;
-    final se = _exerciseIn(session, exerciseId);
-    final setIndex = se.sets.length + 1;
-    final exercise = await _exercises.getById(exerciseId);
-    final execution = await _prefill.executionFor(
+    await startSetFor(
+      session: _session,
       exerciseId: exerciseId,
-      setIndex: setIndex,
-    );
-    final predictedLoad = await _prefill.loadFor(
-      exerciseId: exerciseId,
-      setIndex: setIndex,
-      currentSession: session,
-    );
-    final load = predictedLoad ??
-        Load(
-          source: exercise?.defaultLoadSource ?? LoadSource.barbell,
-          scope: execution == Execution.unilateral
-              ? LoadScope.perLimb
-              : LoadScope.total,
-        );
-    await _sessions.addSet(
-      sessionId: sessionId,
-      exerciseId: exerciseId,
-      planOrder: se.planOrder,
-      set: WorkoutSet(
-        id: _uuid.v4(),
-        exerciseId: exerciseId,
-        index: setIndex,
-        execution: execution,
-        segments: [SetSegment(load: load)],
-        startedAt: DateTime.now(),
-      ),
+      at: DateTime.now(),
+      sessions: _sessions,
+      exercises: _exercises,
+      prefill: _prefill,
     );
     await _reload();
     await setCurrent(exerciseId);
@@ -100,9 +108,12 @@ class SessionController extends StateNotifier<AsyncValue<Session>> {
   /// Tap #2: stops the clock. Reps are still unset — the row renders as a
   /// prediction (hollow) until confirmed.
   Future<void> endSet(String exerciseId) async {
-    final se = _exerciseIn(_session, exerciseId);
-    final running = se.sets.last;
-    await _sessions.updateSet(running.copyWith(endedAt: DateTime.now()));
+    await endSetFor(
+      session: _session,
+      exerciseId: exerciseId,
+      at: DateTime.now(),
+      sessions: _sessions,
+    );
     await _reload();
   }
 
@@ -159,6 +170,7 @@ class SessionController extends StateNotifier<AsyncValue<Session>> {
     final updated = _session.copyWith(currentExerciseId: exerciseId);
     await _sessions.updateSessionMeta(updated);
     state = AsyncValue.data(updated);
+    await _syncAmbient(updated);
   }
 
   /// Exercise picker result. Deferral (already in the pool) just switches
@@ -185,5 +197,11 @@ class SessionController extends StateNotifier<AsyncValue<Session>> {
     final updated = _session.copyWith(endedAt: DateTime.now());
     await _sessions.updateSessionMeta(updated);
     state = AsyncValue.data(updated);
+    try {
+      await _bridge.stopAmbientSurface();
+      await _bridge.clearContext();
+    } catch (_) {
+      // Best-effort, see _syncAmbient.
+    }
   }
 }

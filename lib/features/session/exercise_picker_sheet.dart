@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/exercise.dart';
 import '../../domain/models/session.dart';
 import '../../providers.dart';
+import '../../theme.dart';
 import 'session_controller.dart';
 
 /// Exercise picker (screens.html "Bench is taken"). Order per spec §6:
@@ -75,29 +76,44 @@ class _ExercisePickerSheetState extends ConsumerState<_ExercisePickerSheet> {
                 children: [
                   TextField(
                     controller: _query,
-                    decoration: const InputDecoration(hintText: 'Search all exercises…'),
+                    style: const TextStyle(color: AppColors.ink, fontSize: 14),
+                    decoration: const InputDecoration(
+                      hintText: 'Search all exercises…',
+                      hintStyle: TextStyle(color: AppColors.ink3),
+                    ),
                     onChanged: _search,
                   ),
                   if (outstanding.isNotEmpty) ...[
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Text('Still to do today', style: TextStyle(fontSize: 12)),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16, bottom: 4),
+                      child: Text('STILL TO DO TODAY', style: eyebrowStyle()),
                     ),
                     for (final se in outstanding)
                       ListTile(
-                        title: Text(byId[se.exerciseId]?.name ?? se.exerciseId),
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          byId[se.exerciseId]?.name ?? se.exerciseId,
+                          style: const TextStyle(fontSize: 13.5, color: AppColors.ink),
+                        ),
                         onTap: () => _pick(se.exerciseId),
                       ),
                   ],
                   if (_results.isNotEmpty) ...[
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Text('Library', style: TextStyle(fontSize: 12)),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16, bottom: 4),
+                      child: Text('LIBRARY', style: eyebrowStyle()),
                     ),
                     for (final ex in _results)
                       ListTile(
-                        title: Text(ex.name),
-                        subtitle: Text(ex.primaryMuscle.name),
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          ex.name,
+                          style: const TextStyle(fontSize: 13.5, color: AppColors.ink),
+                        ),
+                        subtitle: Text(
+                          ex.primaryMuscle.name,
+                          style: const TextStyle(fontSize: 11, color: AppColors.ink3),
+                        ),
                         onTap: () => _pick(ex.id),
                       ),
                   ],

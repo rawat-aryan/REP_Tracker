@@ -135,6 +135,26 @@ class SessionRepository {
     });
   }
 
+  /// Removes a set outright rather than archiving it — reserved for the
+  /// phantom-set "discard?" prompt (§7 failure modes). A pocket-bumped
+  /// start/end pair is noise, not history; I7's archive-don't-delete rule
+  /// is about exercises/days/routines, not junk data like this.
+  Future<void> deleteSet(String id) async {
+    await (_db.delete(_db.setSegments)..where((t) => t.workoutSetId.equals(id)))
+        .go();
+    await (_db.delete(_db.workoutSets)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// How many sessions the user has actually finished — backs the trigger
+  /// upgrade offer, shown only after the third one (§16 "capability
+  /// detection": not during onboarding, when the friction isn't real yet).
+  Future<int> completedSessionCount() async {
+    final rows = await (_db.select(_db.sessions)
+          ..where((t) => t.endedAt.isNotNull()))
+        .get();
+    return rows.length;
+  }
+
   Future<Session?> getById(String id) async {
     final row = await (_db.select(_db.sessions)..where((t) => t.id.equals(id)))
         .getSingleOrNull();
@@ -184,6 +204,21 @@ class SessionRepository {
       if (full != null) sessions.add(full);
     }
     return sessions;
+  }
+
+  /// Most recent session across every day, optionally strictly before
+  /// [before]. A home-screen concern (the rest-day "last session" summary)
+  /// — reads [SessionRow.workoutDayId] only to name the day, never to
+  /// filter analytics (I1).
+  Future<Session?> mostRecentSession({DateTime? before}) async {
+    final query = _db.select(_db.sessions)
+      ..orderBy([(t) => OrderingTerm.desc(t.startedAt)])
+      ..limit(1);
+    if (before != null) {
+      query.where((t) => t.startedAt.isSmallerThanValue(before));
+    }
+    final row = await query.getSingleOrNull();
+    return row == null ? null : getById(row.id);
   }
 
   /// Every logged set for [exerciseId], most-recent session first. The read

@@ -149,9 +149,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('L8 R8'), findsOneWidget);
-    // The logged set shows "30 /side" — a second, greyed one may also be
-    // showing as the prefilled prediction for a set 2 that hasn't started.
-    expect(find.text('30 /side'), findsWidgets);
+    // The logged set shows "30 /side" (rendered as two RichText spans, one
+    // muted, per screens.html's `.c-w`+`.side` pairing) — a second, greyed
+    // one may also show as the prefilled prediction for a set 2 that
+    // hasn't started.
+    expect(find.text('30 /side', findRichText: true), findsWidgets);
 
     await db.close();
   });

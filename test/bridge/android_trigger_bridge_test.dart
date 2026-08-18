@@ -13,12 +13,23 @@ import 'package:rep_tracker/domain/models/workout_set.dart';
 /// drain by id, truncation, journal-timestamp duration, phantom detection.
 /// The MethodChannel half (ambient surface, tier query) has no desktop
 /// equivalent to fake — that's verified on-device.
-class _FakeDocsDir extends PathProviderPlatform with MockPlatformInterfaceMixin {
-  _FakeDocsDir(this.path);
+/// [AndroidTriggerBridge] reads/writes `context.filesDir` via
+/// `getApplicationSupportDirectory()` — the same call `AppDatabase` uses,
+/// and NOT `getApplicationDocumentsDirectory()` (that resolves to a
+/// `context.filesDir/app_flutter/` subdirectory on Android that
+/// `TriggerJournal.kt` never looks in — a real bug milestone 06's on-device
+/// verification caught). Fake both paths to the same temp dir so a future
+/// regression back to the wrong call fails this suite instead of only
+/// showing up on a real device.
+class _FakeAppDir extends PathProviderPlatform with MockPlatformInterfaceMixin {
+  _FakeAppDir(this.path);
   final String path;
 
   @override
-  Future<String?> getApplicationDocumentsPath() async => path;
+  Future<String?> getApplicationSupportPath() async => path;
+
+  @override
+  Future<String?> getApplicationDocumentsPath() async => '$path/app_flutter';
 }
 
 void main() {
@@ -26,7 +37,7 @@ void main() {
 
   setUp(() async {
     dir = await Directory.systemTemp.createTemp('rep_tracker_android_bridge_test_');
-    PathProviderPlatform.instance = _FakeDocsDir(dir.path);
+    PathProviderPlatform.instance = _FakeAppDir(dir.path);
   });
 
   tearDown(() async {

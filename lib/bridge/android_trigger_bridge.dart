@@ -9,12 +9,20 @@ import 'trigger_event.dart';
 
 /// Real Android [TriggerBridge]. Milestone 02.
 ///
-/// `context.json` / `events.jsonl` live in `getApplicationDocumentsDirectory()`,
+/// `context.json` / `events.jsonl` live in `getApplicationSupportDirectory()`,
 /// which on Android resolves to `context.filesDir` — the exact path the
 /// Kotlin side (`TriggerJournal.kt`) reads and appends to with plain
-/// `java.io.File` calls. No channel round-trip for either file; that keeps
-/// the contract's "two files, each with exactly one writer" true even when
-/// the app process is dead and only native is running (§7).
+/// `java.io.File` calls, and the same directory `AppDatabase` puts the
+/// sqlite file in (`database.dart`). No channel round-trip for either file;
+/// that keeps the contract's "two files, each with exactly one writer" true
+/// even when the app process is dead and only native is running (§7).
+///
+/// `getApplicationDocumentsDirectory()` is NOT this path on Android — it
+/// resolves to `context.filesDir/app_flutter/`, a subdirectory Kotlin never
+/// looks in. Milestone 06's physical/emulator verification is what caught
+/// this: `context.json` was silently landing one directory below where
+/// `TriggerJournal.kt` reads it, so every `writeContext` call since
+/// milestone 02 was writing into a void.
 ///
 /// The ambient surface (start/stop the foreground service, query which
 /// tiers this device actually has) has no file-based equivalent — those go
@@ -28,10 +36,10 @@ class AndroidTriggerBridge implements TriggerBridge {
   final Set<String> _seenEventIds = {};
 
   Future<File> _contextFile() async =>
-      File('${(await getApplicationDocumentsDirectory()).path}/context.json');
+      File('${(await getApplicationSupportDirectory()).path}/context.json');
 
   Future<File> _eventsFile() async =>
-      File('${(await getApplicationDocumentsDirectory()).path}/events.jsonl');
+      File('${(await getApplicationSupportDirectory()).path}/events.jsonl');
 
   @override
   Future<void> writeContext(TriggerContext context) async {

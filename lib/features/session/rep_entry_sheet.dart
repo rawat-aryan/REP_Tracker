@@ -6,6 +6,7 @@ import '../../domain/models/load.dart';
 import '../../domain/models/workout_set.dart';
 import '../../domain/rules/prefill.dart';
 import '../../providers.dart';
+import '../../theme.dart';
 import 'session_controller.dart';
 
 /// The overflow / "⋯" screen (spec §8.2-8.3, screens.html "Rep entry — full").
@@ -145,10 +146,10 @@ class _RepEntrySheetState extends ConsumerState<_RepEntrySheet> {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        left: 18,
+        right: 18,
+        top: 18,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 18,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -158,12 +159,22 @@ class _RepEntrySheetState extends ConsumerState<_RepEntrySheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(widget.exercise.name, style: Theme.of(context).textTheme.titleMedium),
-                Text('set ${widget.set.index}', style: Theme.of(context).textTheme.labelSmall),
+                Text(
+                  widget.exercise.name,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.ink),
+                ),
+                Text('set ${widget.set.index}', style: monoStyle(fontSize: 11, color: AppColors.ink3)),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             SegmentedButton<Execution>(
+              style: SegmentedButton.styleFrom(
+                backgroundColor: AppColors.surface2,
+                foregroundColor: AppColors.ink2,
+                selectedBackgroundColor: AppColors.accent,
+                selectedForegroundColor: AppColors.onAccent,
+                side: const BorderSide(color: AppColors.lineStrong),
+              ),
               segments: const [
                 ButtonSegment(value: Execution.bilateral, label: Text('Bilateral')),
                 ButtonSegment(value: Execution.unilateral, label: Text('Unilateral')),
@@ -171,41 +182,60 @@ class _RepEntrySheetState extends ConsumerState<_RepEntrySheet> {
               selected: {_execution},
               onSelectionChanged: (s) => setState(() => _execution = s.first),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Row(
               children: [
-                const Text('Weight'),
-                const SizedBox(width: 12),
-                IconButton(
-                  icon: const Icon(Icons.remove_circle_outline),
-                  onPressed: () => _bumpWeight(-_increment),
-                  onLongPress: () => _bumpWeight(-coarseIncrementKg(_increment)),
-                ),
-                SizedBox(
-                  width: 64,
-                  child: TextField(
-                    controller: _weight,
-                    textAlign: TextAlign.center,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                SizedBox(width: 52, child: Text('WEIGHT', style: eyebrowStyle())),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface2,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _StepGlyph(
+                        '−',
+                        onTap: () => _bumpWeight(-_increment),
+                        onLongPress: () => _bumpWeight(-coarseIncrementKg(_increment)),
+                      ),
+                      SizedBox(
+                        width: 52,
+                        child: TextField(
+                          controller: _weight,
+                          textAlign: TextAlign.center,
+                          style: monoStyle(fontSize: 14),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(
+                            filled: false,
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ),
+                      _StepGlyph(
+                        '+',
+                        onTap: () => _bumpWeight(_increment),
+                        onLongPress: () => _bumpWeight(coarseIncrementKg(_increment)),
+                      ),
+                    ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
-                  onPressed: () => _bumpWeight(_increment),
-                  onLongPress: () => _bumpWeight(coarseIncrementKg(_increment)),
-                ),
-                const Text('kg'),
+                const SizedBox(width: 8),
+                const Text('kg', style: TextStyle(fontSize: 12, color: AppColors.ink3)),
                 const Spacer(),
-                FilterChip(
-                  label: const Text('/ side'),
+                _ToggleChip(
+                  label: '/ side',
                   selected: _scope == LoadScope.perLimb,
-                  onSelected: (v) => setState(
-                    () => _scope = v ? LoadScope.perLimb : LoadScope.total,
+                  onTap: () => setState(
+                    () => _scope = _scope == LoadScope.perLimb ? LoadScope.total : LoadScope.perLimb,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             if (_execution == Execution.bilateral)
               _repsField('Reps', _reps)
             else ...[
@@ -213,16 +243,35 @@ class _RepEntrySheetState extends ConsumerState<_RepEntrySheet> {
               const SizedBox(height: 8),
               _repsField('Right', _repsRight),
             ],
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
+            const SizedBox(height: 16),
+            Row(
               children: [
-                _tagChip(SetTag.warmup, 'Warmup'),
-                _tagChip(SetTag.dropSet, 'Drop set'),
-                _tagChip(SetTag.toFailure, 'To failure'),
+                Expanded(
+                  child: _ToggleChip(
+                    label: 'Warmup',
+                    selected: _tags.contains(SetTag.warmup),
+                    onTap: () => _toggleTag(SetTag.warmup),
+                  ),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: _ToggleChip(
+                    label: 'Drop set',
+                    selected: _tags.contains(SetTag.dropSet),
+                    onTap: () => _toggleTag(SetTag.dropSet),
+                  ),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: _ToggleChip(
+                    label: 'To failure',
+                    selected: _tags.contains(SetTag.toFailure),
+                    onTap: () => _toggleTag(SetTag.toFailure),
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             FilledButton(onPressed: _save, child: const Text('Save')),
           ],
         ),
@@ -230,43 +279,121 @@ class _RepEntrySheetState extends ConsumerState<_RepEntrySheet> {
     );
   }
 
+  void _toggleTag(SetTag tag) => setState(() {
+        if (!_tags.remove(tag)) _tags.add(tag);
+      });
+
   Widget _repsField(String label, TextEditingController controller) {
     final base = int.tryParse(controller.text) ?? _predicted ?? 8;
     return Row(
       children: [
-        SizedBox(width: 48, child: Text(label)),
-        ...repQuickPicks(base).map(
-          (v) => Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: ChoiceChip(
-              label: Text('$v'),
-              selected: controller.text == '$v',
-              onSelected: (_) => setState(() => controller.text = '$v'),
-            ),
+        SizedBox(width: 44, child: Text(label.toUpperCase(), style: eyebrowStyle())),
+        for (final v in repQuickPicks(base))
+          _PickChip(
+            label: '$v',
+            selected: controller.text == '$v',
+            onTap: () => setState(() => controller.text = '$v'),
           ),
-        ),
         SizedBox(
-          width: 48,
+          width: 38,
           child: TextField(
             controller: controller,
             textAlign: TextAlign.center,
+            style: monoStyle(fontSize: 13, color: AppColors.ink3),
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(hintText: '…'),
+            decoration: const InputDecoration(
+              hintText: '…',
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(vertical: 8),
+            ),
           ),
         ),
       ],
     );
   }
+}
 
-  Widget _tagChip(SetTag tag, String label) => FilterChip(
-        label: Text(label),
-        selected: _tags.contains(tag),
-        onSelected: (v) => setState(() {
-          if (v) {
-            _tags.add(tag);
-          } else {
-            _tags.remove(tag);
-          }
-        }),
-      );
+/// `.stepper .g` — the plain +/- glyphs either side of the value.
+class _StepGlyph extends StatelessWidget {
+  const _StepGlyph(this.symbol, {required this.onTap, required this.onLongPress});
+
+  final String symbol;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Text(symbol, style: const TextStyle(fontSize: 16, color: AppColors.ink3, height: 1)),
+      ),
+    );
+  }
+}
+
+/// `.pick` / `.pick.on` — the rep quick-pick buttons.
+class _PickChip extends StatelessWidget {
+  const _PickChip({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          margin: const EdgeInsets.only(right: 6),
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? AppColors.accent : null,
+            border: Border.all(color: selected ? AppColors.accent : AppColors.lineStrong),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            label,
+            style: monoStyle(fontSize: 14, color: selected ? AppColors.onAccent : AppColors.ink2),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// `.btn-q`-shaped toggle — used for the `/ side` chip and the three tag
+/// buttons (Warmup/Drop set/To failure).
+class _ToggleChip extends StatelessWidget {
+  const _ToggleChip({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(appRadius),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? AppColors.accent : null,
+          border: Border.all(color: selected ? AppColors.accent : AppColors.lineStrong),
+          borderRadius: BorderRadius.circular(appRadius),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 12.5, color: selected ? AppColors.onAccent : AppColors.ink2),
+        ),
+      ),
+    );
+  }
 }

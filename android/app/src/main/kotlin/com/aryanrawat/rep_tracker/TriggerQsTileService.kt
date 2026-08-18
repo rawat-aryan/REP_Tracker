@@ -14,13 +14,14 @@ class TriggerQsTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
-        TriggerToggleState.toggle(this)
+        val runningNow = TriggerToggleState.toggle(this)
         if (TriggerForegroundService.isRunning) {
             startForegroundService(
                 Intent(this, TriggerForegroundService::class.java)
                     .setAction(TriggerForegroundService.ACTION_REFRESH),
             )
         }
+        if (!runningNow) TriggerAppLauncher.bringForward(this)
         refreshTileState()
     }
 

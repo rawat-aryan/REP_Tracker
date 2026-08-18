@@ -2,6 +2,222 @@
 
 Resume log for milestone work. One line per step: what's done, what's next.
 
+## Milestone 06 — ambient surfaces (Android only)
+
+- 2026-08-18 — Read CLAUDE.md, milestone 06 spec, spec §7/§16, and the
+  existing `TriggerBridge`/`AndroidTriggerBridge`/Android native trigger
+  layer from milestones 01-03 (the contract and Android's foreground
+  service/QS tile already existed; **nothing in the app called any of it**
+  — `SessionController` was 100% manual-tap, matching its own doc comment).
+  Two scope calls made with the user up front, both written up as ADRs:
+  - **ADR-005**: iOS deferred again, same reason as milestone 01 (no paid
+    dev account) — Android-only build.
+  - **ADR-006**: the ambient card's "ended" state brings the app forward to
+    the existing milestone-04 rep-entry sheet rather than adding inline
+    weight-stepper/rep-quick-pick controls to the notification itself —
+    resolves a real tension between the milestone doc's build list and its
+    own "must hold" section. Keeps `TriggerEventType` at exactly
+    `setStarted`/`setEnded`, no payload growth, no custom `RemoteViews`.
+  - Built the wiring: `lib/bridge/trigger_apply.dart` (`startSetFor`/
+    `endSetFor`/`buildTriggerContext` — single source of truth shared by
+    manual taps and drained events, so prefill logic can't drift between
+    them), `lib/bridge/trigger_drain_service.dart` (`TriggerDrainService`,
+    called on cold start and app resume in `main.dart` via
+    `WidgetsBindingObserver`, before first render per §7). `SessionController`
+    now calls `updateAmbientSurface` after every state-changing method (all
+    routed through one `_reload()`/`_syncAmbient()` hook) and
+    `stopAmbientSurface`/`clearContext` on `endSession` — best-effort,
+    wrapped so a notification-channel failure never blocks the DB write.
+  - `TriggerActionReceiver`/`TriggerQsTileService` (Kotlin): a toggle press
+    that just appended `setEnded` now calls the new `TriggerAppLauncher.
+    bringForward` — satisfies "must hold" from both the notification and
+    the QS tile.
+  - Home screen: `lib/features/home/ambient_banners.dart` +
+    `_AmbientBannerList` — the ambient unresolved-gap row from spec §12,
+    sitting above whatever `HomeState` is showing, dismissible, never a
+    modal (I3). Covers phantom-set discard (`WorkoutSet.isPhantom()`,
+    already existed from milestone 03 — just needed surfacing) and the
+    capability-upgrade offer (shown once `completedSessionCount() >= 3`,
+    dismiss is in-memory only for now — no schema change for a one-time
+    banner).
+  - **Two real bugs found and fixed by on-device verification, not by the
+    test suite**:
+    1. `AndroidTriggerBridge` had been calling
+       `getApplicationDocumentsDirectory()` since milestone 02/03, which on
+       Android resolves to `context.filesDir/app_flutter/` — **not**
+       `context.filesDir`, where `TriggerJournal.kt` actually reads/writes.
+       Every `writeContext`/`drain` call had silently been operating on a
+       directory the native side never looked in. Existing tests never
+       caught it because they fake `getApplicationDocumentsPath()` directly,
+       so the fake and the (wrong) production call always agreed with each
+       other. Fixed to `getApplicationSupportDirectory()` (the same call
+       `AppDatabase` already uses for the sqlite file) and hardened
+       `test/bridge/android_trigger_bridge_test.dart`'s fake to serve both
+       paths to *different* directories, so a regression back to the wrong
+       call fails the suite instead of only showing up on a real device.
+    2. Actually starting the ambient surface crashed the app outright the
+       first time this milestone made anything call it:
+       `foregroundServiceType="health"` requires a granted
+       ACTIVITY_RECOGNITION-or-similar permission on this SDK, not just a
+       declared one, and starting with no type at all once the manifest
+       declares specific types is *also* rejected. Fixed with a `dataSync`
+       fallback type (declared alongside `health` in the manifest) so the
+       service degrades gracefully instead of crashing when that
+       permission hasn't been granted yet, plus requesting
+       POST_NOTIFICATIONS and ACTIVITY_RECOGNITION together in one call
+       (firing `requestPermissions` twice back-to-back in `onCreate` was
+       silently dropping the second dialog).
+    3. `TriggerDrainService.drainAndApply()` writes directly through the
+       repositories, bypassing whatever `SessionController` instance might
+       already be alive for that session (e.g. the user backgrounded the
+       app mid-session instead of fully closing it) — that live instance
+       never learned its data changed. Fixed by invalidating
+       `sessionControllerProvider(landing.sessionId)` alongside
+       `homeStateProvider` in `main.dart`'s drain handler.
+  - **Verified for real**, not just unit-tested: built the debug APK,
+    installed on the Pixel 9a emulator, and drove the actual failure mode
+    the milestone's Done-when describes — wrote `setStarted`/`setEnded`
+    lines directly into the on-device `events.jsonl` (standing in for the
+    native trigger, since this environment can't press a real notification
+    button on a locked screen), backgrounded and re-foregrounded the app,
+    and confirmed: the ledger updated from "4 of 4 outstanding" to "3 of 4",
+    the app landed directly on the rep-entry sheet for Hip thrust set 1
+    with zero taps, and the persisted `WorkoutSet.duration` was exactly 52s
+    — matching the injected journal timestamps, not wall-clock drain time.
+  - `flutter analyze` clean, `flutter test` 38/38 green — new
+    `test/bridge/trigger_drain_service_test.dart` covers the same scenario
+    end-to-end against a real (in-memory) `SessionRepository`: journal
+    timestamps win over drain time, exercise attribution is correct, and a
+    second drain with nothing pending is idempotent (no duplicate set).
+  - **Not built**: iOS (ADR-005), the inline notification stepper/quick-picks
+    (ADR-006 — deliberately resolved toward the existing rep-entry sheet
+    instead), and persisted dismissal for the capability-offer banner
+    (in-memory only, resets each app run — cheap to add a kv row later if
+    that turns out to matter).
+
+## Visual pass — screens.html design system applied (post-milestone-05)
+
+- 2026-08-18 — User flagged that milestones 04/05 matched screens.html's
+  *structure* (ledger, five states, hollow predictions) but not its actual
+  *visuals* — the app was still running stock Material 3 light purple, not
+  the dark theme/typography the mockup defines. Pulled every design token
+  out of `docs/screens.html`'s `:root` CSS and applied them for real:
+  - `lib/theme.dart` (new) — `AppColors` (the exact hex values from
+    `:root`), `appRadius` (10px, the one radius the mockup uses almost
+    everywhere), `monoStyle()`/`eyebrowStyle()` helpers, and
+    `buildAppTheme()` wiring dark `ColorScheme` + per-widget themes
+    (filled/outlined/text buttons, chips, inputs, bottom sheets) so most
+    screens pick up the right look for free just by using stock
+    `FilledButton`/`OutlinedButton`/`TextField`/`FilterChip`.
+  - Added `google_fonts` (Archivo + IBM Plex Mono, matching the mockup's
+    own Google Fonts `<link>` tags) — the one new dependency, deliberate:
+    hand-bundling the `.ttf` files as assets was the alternative and
+    strictly more manual for the same result.
+  - `lib/widgets/elapsed_pill.dart` — restyled to the mockup's `.pill`
+    (accent-bg/accent-ink), used identically by both the session header
+    and the home in-progress card.
+  - `lib/features/session/session_screen.dart` — full rewrite of the
+    ledger's visuals: `.sethead` column labels, `.setrow`/`.c-i`/`.c-w`/
+    `.c-r` mono columns, the `.setrow.live` accent-pill treatment (now a
+    shared `_LiveRow` wrapper) for whichever row is currently actionable
+    (start/running/pending-reps), `.hollow` stroke-only text for
+    unconfirmed predictions (ink3 stroke, not accent — matches the CSS
+    exactly), `.side` suffix on per-limb weights, `.tag` chips (now public
+    `AppTag`, reused for both the exercise-level "uni" marker and per-set
+    tags).
+  - `lib/features/session/rep_entry_sheet.dart` — full rewrite: custom
+    `_StepGlyph`/`_PickChip`/`_ToggleChip` widgets replacing the earlier
+    generic `IconButton`/`ChoiceChip`/`FilterChip`, because Material's
+    default chip padding/shape didn't read as the mockup's flat bordered
+    buttons. `entry-lbl` spacing, `.stepper` container, `.pick`/`.pick.on`
+    reps buttons, `.btn-q`-shaped tag toggles.
+  - `lib/features/home/home_screen.dart` — full rewrite: `.eyebrow`/
+    `.scr-title`/`.scr-sub` header pattern per state, `.lrow` ledger rows
+    (new shared `_LedgerRow`) with `dim` (opacity .42, notStarted
+    exercises) and accent-highlighted current-exercise treatment.
+  - `lib/features/session/exercise_picker_sheet.dart` — lighter touch:
+    eyebrow section headers, themed search field, ink-colored list text.
+  - One real regression caught by the widget-test rerun: `_WeightText`'s
+    two-tone weight+`/side` rendering used `RichText`, which `find.text`
+    doesn't match by default — fixed by exposing a shared `_LoadText`
+    widget (used by every row, including the not-yet-started prediction
+    row, which had silently lost its `/side` suffix in the same refactor)
+    and updating the one assertion to `find.text(..., findRichText: true)`.
+  - `flutter analyze` clean, `flutter test` 37/37 green. Manually driven
+    end-to-end on the Pixel 9a emulator (uninstall → fresh install →
+    Planned → Start → running row → pending-reps row → full rep-entry
+    sheet) confirming the actual rendered screens now match
+    `docs/screens.html`'s dark theme, mono numerics, and pill/chip/hollow
+    treatments — not just the mockup's information architecture.
+  - **Not done**: the exercise picker sheet's visual pass was intentionally
+    lighter (no full `.field`/`.opt` card treatment) since it's a smaller,
+    less load-bearing screen; revisit if it starts looking inconsistent
+    next to the two screens that got the full treatment.
+
+## Milestone 05 — home screen (five states)
+
+- 2026-08-18 — Read CLAUDE.md, milestone 05 spec, spec §12, and
+  screens.html flow 02. Built the whole thing:
+  - `lib/domain/rules/home.dart` — pure `HomeState` sealed class
+    (`NoPlanYet`/`RestDay`/`PlannedNotStarted`/`InProgress`/`Done`) +
+    `computeHomeState`. Deliberately scoped: the pure function only decides
+    Planned/InProgress/Done for a day already known to be scheduled today —
+    Rest-day and No-plan-yet need day-name lookups that would otherwise
+    drag a repository into a function that's supposed to be `dart test
+    test/domain`-testable without Flutter.
+  - `lib/features/home/home_providers.dart` — `homeStateProvider`
+    (`FutureProvider`) does the repository fetching and the two branches
+    that need it, then hands off to `computeHomeState` for the rest.
+  - `lib/features/home/home_screen.dart` — pattern-matches on `HomeState`
+    (Dart 3 `switch` over the sealed class, per CLAUDE.md's "sealed class +
+    pattern matching over enums-with-fields"). Start/Resume/"Just start"
+    all funnel through `_openSession` which pushes the existing
+    `SessionScreen` (milestone 04, unchanged) and invalidates
+    `homeStateProvider` on return so the card is never stale after a trip
+    into the session.
+  - **Scope cut, matches spec's own escape hatch**: "No plan yet" only
+    offers "Just start — I'll improvise" (spec §5: "never gate the workout
+    behind declaring it"). No upfront exercise-name-input UI — that would
+    duplicate the exercise picker already built into the session screen in
+    milestone 04, which is reachable the moment an improvised session
+    opens. Flagged in a comment on `NoPlanYet`.
+  - Small necessary additions: `SessionRepository.mostRecentSession`
+    (rest-day's "last session" summary — reads `workoutDayId` only to name
+    the day, never to filter analytics, so still I1-clean);
+    `workoutDayProvider` (home's in-progress/done cards want target set
+    counts and the day name, display-only, same I1 note).
+  - Extracted `_ElapsedPill` out of `session_screen.dart` into
+    `lib/widgets/elapsed_pill.dart` as public `ElapsedPill` — home's
+    in-progress card needed the identical ticking mm:ss pill, and
+    duplicating the whole `Timer`-backed `StatefulWidget` across two files
+    would've been the kind of copy nothing was reusing later.
+  - `lib/main.dart` — now bootstraps a `WeekPlan` (today's weekday →
+    the milestone 04 demo Legs day) alongside the existing exercise seed
+    and demo `WorkoutDay`, and launches into `HomeScreen` instead of
+    dropping straight into a session. `SessionScreen` gained a back button
+    (`session_screen.dart`) since it's now pushed via `Navigator` instead
+    of being the app's root.
+  - `flutter analyze` clean, `flutter test` 37/37 green — 4 new domain
+    tests (`test/domain/home_rules_test.dart`, including a literal
+    "force-quit mid-set, read fresh from the DB, elapsed time is still
+    correct" case) and 4 new widget tests
+    (`test/features/home/home_screen_test.dart`: planned/rest/in-progress/
+    done, the in-progress one being the milestone's actual Done-when —
+    build a fresh widget tree over an already-persisted open session and
+    confirm it lands on Resume with the right elapsed pill, which is
+    exactly what a force-quit-and-reopen looks like since nothing here
+    depends on in-memory app state). Also manually driven end-to-end on
+    the Pixel 9a emulator (uninstall → fresh install → Planned-not-started
+    → Start → back button → In-progress with correct target-set
+    denominators and a live elapsed pill) — caught and fixed one real bug
+    this way: the in-progress ledger was showing `0 · 0` (actual sets over
+    actual sets) instead of `0 · 3` (actual sets over the day's planned
+    target) before `workoutDayProvider` was wired in.
+  - **Not built**: the ambient unresolved-gap row (needs the observation
+    layer, milestone 09) and any real onboarding-driven plan (still the
+    milestone 04 demo bootstrap — real per-user plans arrive in milestone
+    07).
+
 ## Milestone 04 — session screen (manual logging only, no native trigger)
 
 - 2026-08-18 — Read CLAUDE.md, milestone 04 spec, spec §6/§8, screens.html
