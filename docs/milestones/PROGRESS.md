@@ -2,6 +2,79 @@
 
 Resume log for milestone work. One line per step: what's done, what's next.
 
+## Milestone 10 — exercise library
+
+- 2026-08-19 — Read CLAUDE.md and milestone 10 spec. Discovered the data
+  layer for this milestone was **already built in milestone 03** —
+  `ExerciseRepository.search`/`merge`/`archive` and the `Exercise` model's
+  `incrementOverride`/`variantOf`/`isCustom` fields have existed since the
+  very first data-layer pass, just with no UI ever wired to them. This
+  milestone is entirely that missing UI.
+  - `lib/domain/models/exercise.dart` — added `Exercise.copyWith` (needed
+    once the edit screen has to change one field of ~10 without hand-
+    reconstructing the whole object three different ways).
+  - `lib/features/exercise/create_custom_exercise.dart` — the **one**
+    place a custom `Exercise` gets created (UUID id, `isCustom: true`),
+    shared by all three search surfaces so "create custom" behaves
+    identically everywhere and always sits below real results — spec's
+    own warning that a stray tap here silently forks a growth curve is
+    exactly why this isn't three separate copies of the same form.
+  - Wired a quiet "Create '<query>' as a new exercise" row into all three
+    existing exercise pickers: `session/exercise_picker_sheet.dart`,
+    `plan/week_screen.dart`'s day-editor picker (converted to
+    `ConsumerStatefulWidget` to reach the repository), and
+    `history/exercise_list_screen.dart`.
+  - `lib/features/exercise/exercise_edit_screen.dart` (new) — reached via
+    a new edit icon on the milestone 08 chart screen's AppBar. Name and
+    weight-increment-override fields, a "Variant of" picker (compare
+    pointer only, spec explicitly never a merge), "Merge another exercise
+    into this one" (the *currently viewed* exercise always survives —
+    picking a candidate and confirming calls the existing
+    `merge(keepId: this, loserId: picked)`), and Archive (confirmation
+    dialog, I7 wording — "disappears from pickers but every past set stays
+    in history").
+  - `flutter analyze` clean, `flutter test` 74/74 green — a new
+    `test/data/repositories/exercise_repository_test.dart` covers the
+    milestone's own literal Done-when almost verbatim (merge two
+    exercises with sets logged under each id, assert
+    `historyForExercise(keepId)` returns both sets with no gap, assert the
+    loser is archived not deleted), plus archive/search/increment-
+    override/variantOf round-trips — all against methods that existed
+    since milestone 03 but had never been exercised by a test. New
+    `test/features/exercise/exercise_edit_screen_test.dart` covers the
+    merge confirmation flow and the increment-override save path
+    end-to-end through the real widget tree.
+  - **Real bug found only by on-device testing**: typing a value into the
+    increment-override field and tapping the AppBar back arrow (the
+    natural way to leave the screen) silently discarded it — the field
+    only saved on the keyboard's "done" action
+    (`onSubmitted`/`onEditingComplete`), which system back-navigation
+    never fires. Every other editable field in this app persists
+    immediately (rename dialogs, the week screen's set-count stepper,
+    onboarding fields) with no separate save step, so this was a real
+    inconsistency, not just a missing feature. Fixed with a `FocusNode`
+    per field that saves on focus loss regardless of *how* focus was
+    lost; added a regression widget test that explicitly does NOT use
+    `TextInputAction.done` (calls `FocusManager.instance.primaryFocus
+    ?.unfocus()` instead) so a regression back to keyboard-only saving
+    fails the suite next time.
+  - Manually driven on the Android emulator against the real seeded
+    catalog: History → Browse exercises → Barbell squat → edit icon →
+    entered "5" in the increment field → tapped the back arrow →
+    confirmed via the detail screen and by reopening the edit screen that
+    "5.0" actually persisted (post-fix; pre-fix this reproduced the bug
+    above exactly) → opened "Merge another exercise into this one" →
+    picked "Hack squat" from the real search sheet → confirmed the merge
+    dialog renders the exact expected wording, then cancelled rather than
+    actually merging real seed data.
+  - **Not built**: alias editing UI (not in the milestone's "Build" list —
+    aliases already work for search matching via seed data; nothing
+    requires the user to add their own yet) and a dedicated "browse
+    archived exercises to un-archive" screen (archive is one-way UI for
+    now; the row still exists and is reachable via `getAll
+    (includeArchived: true)` at the repository level if a future
+    milestone needs to surface it).
+
 ## Milestone 09 — observation layer
 
 - 2026-08-19 — Read CLAUDE.md, milestone 09 spec, spec §9/§10, and the

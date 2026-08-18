@@ -8,6 +8,7 @@ import '../../domain/models/workout_set.dart';
 import '../../domain/rules/analytics.dart';
 import '../../providers.dart';
 import '../../theme.dart';
+import '../exercise/exercise_edit_screen.dart';
 
 const _metricLabels = {
   ChartMetric.e1rm: 'e1RM',
@@ -67,7 +68,22 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
   Widget build(BuildContext context) {
     final sets = _sets;
     return Scaffold(
-      appBar: AppBar(title: Text(widget.exerciseName)),
+      appBar: AppBar(
+        title: Text(widget.exerciseName),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.tune),
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ExerciseEditScreen(exerciseId: widget.exerciseId),
+                ),
+              );
+              _load();
+            },
+          ),
+        ],
+      ),
       body: sets == null
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(

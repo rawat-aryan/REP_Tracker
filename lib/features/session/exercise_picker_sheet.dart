@@ -5,6 +5,7 @@ import '../../domain/models/exercise.dart';
 import '../../domain/models/session.dart';
 import '../../providers.dart';
 import '../../theme.dart';
+import '../exercise/create_custom_exercise.dart';
 import 'session_controller.dart';
 
 /// Exercise picker (screens.html "Bench is taken"). Order per spec §6:
@@ -50,6 +51,11 @@ class _ExercisePickerSheetState extends ConsumerState<_ExercisePickerSheet> {
   void _pick(String exerciseId) {
     ref.read(sessionControllerProvider(widget.sessionId).notifier).addExercise(exerciseId);
     Navigator.of(context).pop();
+  }
+
+  Future<void> _createCustom() async {
+    final created = await promptCreateCustomExercise(context, ref, initialName: _query.text.trim());
+    if (created != null) _pick(created.id);
   }
 
   @override
@@ -117,6 +123,20 @@ class _ExercisePickerSheetState extends ConsumerState<_ExercisePickerSheet> {
                         onTap: () => _pick(ex.id),
                       ),
                   ],
+                  if (_query.text.trim().isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: InkWell(
+                        onTap: _createCustom,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: Text(
+                            'Create "${_query.text.trim()}" as a new exercise',
+                            style: const TextStyle(fontSize: 13, color: AppColors.ink2),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             );

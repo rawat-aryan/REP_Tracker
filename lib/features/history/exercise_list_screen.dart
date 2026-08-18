@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/exercise.dart';
 import '../../providers.dart';
 import '../../theme.dart';
+import '../exercise/create_custom_exercise.dart';
 import 'exercise_detail_screen.dart';
 
 /// The entry point into per-exercise history/charts (spec §11) — every
@@ -57,6 +58,25 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                             builder: (_) => ExerciseDetailScreen(exerciseId: ex.id, exerciseName: ex.name),
                           ),
                         ),
+                      ),
+                    if (_needle.isNotEmpty)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          'Create "${_query.text.trim()}" as a new exercise',
+                          style: const TextStyle(fontSize: 13, color: AppColors.ink2),
+                        ),
+                        onTap: () async {
+                          final created =
+                              await promptCreateCustomExercise(context, ref, initialName: _query.text.trim());
+                          if (created == null || !context.mounted) return;
+                          await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  ExerciseDetailScreen(exerciseId: created.id, exerciseName: created.name),
+                            ),
+                          );
+                        },
                       ),
                   ],
                 ),

@@ -6,6 +6,7 @@ import '../../domain/models/exercise.dart';
 import '../../domain/models/plan.dart';
 import '../../providers.dart';
 import '../../theme.dart';
+import '../exercise/create_custom_exercise.dart';
 import '../home/home_screen.dart';
 
 const _uuid = Uuid();
@@ -499,7 +500,7 @@ class _DaySection extends StatelessWidget {
   }
 }
 
-class _ExerciseSearchSheet extends StatefulWidget {
+class _ExerciseSearchSheet extends ConsumerStatefulWidget {
   const _ExerciseSearchSheet({required this.all, required this.query, required this.onPick});
 
   final List<Exercise> all;
@@ -507,10 +508,10 @@ class _ExerciseSearchSheet extends StatefulWidget {
   final void Function(String exerciseId) onPick;
 
   @override
-  State<_ExerciseSearchSheet> createState() => _ExerciseSearchSheetState();
+  ConsumerState<_ExerciseSearchSheet> createState() => _ExerciseSearchSheetState();
 }
 
-class _ExerciseSearchSheetState extends State<_ExerciseSearchSheet> {
+class _ExerciseSearchSheetState extends ConsumerState<_ExerciseSearchSheet> {
   late List<Exercise> _results = widget.all;
 
   void _filter(String q) {
@@ -520,6 +521,12 @@ class _ExerciseSearchSheetState extends State<_ExerciseSearchSheet> {
           ? widget.all
           : widget.all.where((e) => e.name.toLowerCase().contains(needle)).toList();
     });
+  }
+
+  Future<void> _createCustom() async {
+    final created =
+        await promptCreateCustomExercise(context, ref, initialName: widget.query.text.trim());
+    if (created != null) widget.onPick(created.id);
   }
 
   @override
@@ -548,6 +555,14 @@ class _ExerciseSearchSheetState extends State<_ExerciseSearchSheet> {
                       title: Text(ex.name, style: const TextStyle(fontSize: 13.5, color: AppColors.ink)),
                       subtitle: Text(ex.primaryMuscle.name, style: const TextStyle(fontSize: 11, color: AppColors.ink3)),
                       onTap: () => widget.onPick(ex.id),
+                    ),
+                  if (widget.query.text.trim().isNotEmpty)
+                    ListTile(
+                      title: Text(
+                        'Create "${widget.query.text.trim()}" as a new exercise',
+                        style: const TextStyle(fontSize: 13, color: AppColors.ink2),
+                      ),
+                      onTap: _createCustom,
                     ),
                 ],
               ),

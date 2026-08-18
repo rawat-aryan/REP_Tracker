@@ -78,6 +78,31 @@ class Exercise {
     this.archived = false,
   });
 
+  Exercise copyWith({
+    String? name,
+    List<String>? aliases,
+    double? incrementOverride,
+    bool clearIncrementOverride = false,
+    String? variantOf,
+    bool clearVariantOf = false,
+    bool? archived,
+  }) =>
+      Exercise(
+        id: id,
+        isCustom: isCustom,
+        name: name ?? this.name,
+        aliases: aliases ?? this.aliases,
+        primaryMuscle: primaryMuscle,
+        secondaryMuscles: secondaryMuscles,
+        equipment: equipment,
+        defaultExecution: defaultExecution,
+        variantOf: clearVariantOf ? null : (variantOf ?? this.variantOf),
+        incrementOverride:
+            clearIncrementOverride ? null : (incrementOverride ?? this.incrementOverride),
+        equipmentIncrement: equipmentIncrement,
+        archived: archived ?? this.archived,
+      );
+
   /// Fallback [LoadSource] for a brand-new set with no history to prefill
   /// from — the equipment tells you what kind of load it is.
   LoadSource get defaultLoadSource => switch (equipment) {
