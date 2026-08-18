@@ -2,6 +2,77 @@
 
 Resume log for milestone work. One line per step: what's done, what's next.
 
+## Milestone 08 — charts
+
+- 2026-08-19 — Read CLAUDE.md, milestone 08 spec, spec §11, and
+  screens.html flow 05. Built the exercise-detail chart and its entry
+  point; deliberately did **not** build the history heatmap this
+  milestone — see scope cut below.
+  - `lib/domain/rules/analytics.dart` — added `ChartMetric` (e1rm/volume/
+    topSet), `ChartPoint`, and pure `chartSeries(sets, metric)`. Per-set,
+    not per-session-day: `_setE1rm`/`_setTopLoad` take the heaviest single
+    segment within a set (a drop set's "top" effort), `x` comes from
+    `WorkoutSet.startedAt` (skipped if null — an untimed set can't sit on a
+    time axis). No day/plan parameter anywhere, per I1 and the milestone's
+    own "Non-negotiable" clause.
+  - `lib/features/history/exercise_list_screen.dart` +
+    `exercise_detail_screen.dart` — the `features/history/` folder
+    CLAUDE.md's layout section names but milestones 01-07 never built.
+    List is a plain searchable catalog (I1 — unfiltered by plan); detail is
+    the flagship: metric toggle, two `fl_chart` `LineChartBarData` series
+    (bilateral solid, unilateral dashed, **never merged, never
+    normalised** — the milestone's literal Done-when), scale badges
+    showing each series' latest value, a compare overlay (second exercise,
+    third dashed/dotted line, distinct color, picked via a reused
+    search-sheet pattern), and the left/right divergence callout
+    (`meanLimbDivergence`, gated at `>= 0.5` reps average so a single-set
+    blip doesn't trigger it).
+  - `lib/features/home/home_screen.dart` — added a second AppBar icon
+    (chart icon, next to the milestone 07 settings gear) opening
+    `ExerciseListScreen`.
+  - **Scope cut, flagged rather than half-built**: the history heatmap
+    (filled/hollow/muted squares) is milestone 08's fourth build item, but
+    the actual filled-vs-hollow-vs-muted *derivation* — day status,
+    unresolved-by-default, retroactive resolution — is milestone 09's own
+    explicit "Build" list ("Day-status derivation", "Retroactive
+    resolution: tap any heatmap square"). Building a heatmap now would
+    mean either faking that distinction or reading `WorkoutDay`/plan data
+    from a "chart" file in a way I1's non-negotiable clause explicitly
+    warns against ("if a chart function needs a WorkoutDay, the design is
+    wrong"). Deferred whole to milestone 09, which owns the data it needs.
+  - `flutter analyze` clean, `flutter test` 49/49 green — 3 new domain
+    tests (`test/domain/analytics_test.dart`: the ham curl case — two
+    series, neither containing both weights; volume is comparable across
+    both, e1RM/top-set are not; an untimed set is skipped, never plotted
+    at a fake x) and 3 new widget tests
+    (`test/features/history/exercise_detail_screen_test.dart`: the ham
+    curl case end-to-end through real Drift repositories and a real
+    `fl_chart` build, a single-set case, and the empty state).
+  - **Real bug found only by on-device testing, not by any test suite**:
+    with exactly one logged set, the chart rendered completely blank.
+    `LineChartBarData.dotData` was `show: false` on all three series
+    (dots only meant to mark the mockup's "latest value" circle) — a
+    one-spot series has no line segment to draw *and* no dot, so it's
+    invisible. Fixed by turning dots on for every point on all three
+    series; added a regression widget test for the single-set case
+    (asserts no exception, but the actual visual blank-canvas failure
+    would never have shown up in `flutter test`, which doesn't rasterize).
+    Also fixed a pluralization bug caught in the same pass: "1 sets
+    logged".
+  - Manually driven on the Pixel/Android emulator: History list (all 50
+    seeded exercises, alphabetical, search-filtered live) → Hip thrust
+    detail → empty state renders correctly → logged a real set through
+    the existing (milestone-04, untouched) session flow → confirmed "1 set
+    logged", the e1RM/Volume/Top set toggle chips, the bilateral scale
+    badge, and — after the dot fix — a visible chart point.
+  - **Not built**: the history heatmap (see scope cut above, owned by
+    milestone 09) and a real second data point for the ham-curl
+    two-series visual check on-device (the domain test and the widget
+    test both cover it deterministically; on-device data entry through
+    the pre-existing session flow proved slow to drive via `adb` and
+    wasn't worth more tool-call budget once the underlying logic was
+    already proven twice over).
+
 ## Milestone 07 — onboarding
 
 - 2026-08-19 — Read CLAUDE.md, milestone 07 spec, spec §4/§4.1, and

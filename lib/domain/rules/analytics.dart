@@ -68,3 +68,54 @@ double exerciseOverlap(Set<String> a, Set<String> b) {
 /// < 0.50  twice in a row — ask once, then never again for that pair.
 const double kSameDayThreshold = 0.70;
 const double kSplitDayThreshold = 0.50;
+
+/// The exercise-detail chart's metric toggle (spec §11).
+enum ChartMetric { e1rm, volume, topSet }
+
+/// One plotted point. [date] comes from [WorkoutSet.startedAt] — sets with
+/// no timing data (never started/ended through the app's own flow) can't be
+/// placed on a time axis and are skipped by [chartSeries].
+class ChartPoint {
+  final DateTime date;
+  final double value;
+  const ChartPoint({required this.date, required this.value});
+}
+
+/// The heaviest single segment's e1RM within [set] — a drop set's "top"
+/// effort, not an average across its segments.
+double? _setE1rm(WorkoutSet set) {
+  double? best;
+  for (final seg in set.segments) {
+    final v = estimatedOneRepMax(weightKg: seg.load.value, reps: seg.totalReps);
+    if (v != null && (best == null || v > best)) best = v;
+  }
+  return best;
+}
+
+/// The heaviest single segment's load within [set] — the "top set" metric.
+double? _setTopLoad(WorkoutSet set) {
+  double? best;
+  for (final seg in set.segments) {
+    final v = seg.load.value;
+    if (v != null && (best == null || v > best)) best = v;
+  }
+  return best;
+}
+
+double _metricValue(WorkoutSet set, ChartMetric metric) => switch (metric) {
+      ChartMetric.e1rm => _setE1rm(set) ?? 0,
+      ChartMetric.volume => volumeKg(set),
+      ChartMetric.topSet => _setTopLoad(set) ?? 0,
+    };
+
+/// Turns a flat set history (already split by execution via
+/// [splitByExecution] upstream — this function never mixes the two) into a
+/// chronological series for one metric. Pure: no day/plan input, per I1.
+List<ChartPoint> chartSeries(List<WorkoutSet> sets, ChartMetric metric) {
+  final points = <ChartPoint>[
+    for (final s in sets)
+      if (s.startedAt != null) ChartPoint(date: s.startedAt!, value: _metricValue(s, metric)),
+  ];
+  points.sort((a, b) => a.date.compareTo(b.date));
+  return points;
+}

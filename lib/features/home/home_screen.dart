@@ -10,6 +10,7 @@ import '../../domain/rules/home.dart';
 import '../../providers.dart';
 import '../../theme.dart';
 import '../../widgets/elapsed_pill.dart';
+import '../history/exercise_list_screen.dart';
 import '../plan/week_screen.dart';
 import '../session/session_screen.dart' show SessionScreen;
 import 'ambient_banners.dart';
@@ -34,17 +35,25 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: IconButton(
-                  icon: const Icon(Icons.settings_outlined, color: AppColors.ink3),
-                  onPressed: () async {
-                    await Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const WeekScreen()),
-                    );
-                    ref.invalidate(homeStateProvider);
-                  },
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.show_chart, color: AppColors.ink3),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const ExerciseListScreen()),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.settings_outlined, color: AppColors.ink3),
+                    onPressed: () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const WeekScreen()),
+                      );
+                      ref.invalidate(homeStateProvider);
+                    },
+                  ),
+                ],
               ),
               const _AmbientBannerList(),
               Expanded(
