@@ -1,5 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+/// Bundled locally as assets (see pubspec.yaml `fonts:`) rather than fetched
+/// at runtime via `google_fonts` — this app is local-only, no cloud (spec),
+/// and a device with no/blocked internet (or, as shipped, no `INTERNET`
+/// permission at all — never needed for anything else) silently fell back
+/// to the system font on every real device, changing every weight/size in
+/// the app without changing a single number in this file.
+const _archivo = 'Archivo';
+const _ibmPlexMono = 'IBM Plex Mono';
 
 /// Design tokens lifted directly from `docs/screens.html`'s `:root` CSS
 /// variables. One dark theme — the mockup never designed a light mode, so
@@ -31,7 +39,8 @@ TextStyle monoStyle({
   Color color = AppColors.ink,
   FontWeight fontWeight = FontWeight.w400,
 }) =>
-    GoogleFonts.ibmPlexMono(
+    TextStyle(
+      fontFamily: _ibmPlexMono,
       fontSize: fontSize,
       color: color,
       fontWeight: fontWeight,
@@ -39,7 +48,8 @@ TextStyle monoStyle({
     );
 
 /// `.eyebrow` — uppercase, wide-tracked, muted.
-TextStyle eyebrowStyle({Color color = AppColors.ink3}) => GoogleFonts.archivo(
+TextStyle eyebrowStyle({Color color = AppColors.ink3}) => TextStyle(
+      fontFamily: _archivo,
       fontSize: 10,
       letterSpacing: 1.3,
       color: color,
@@ -47,10 +57,10 @@ TextStyle eyebrowStyle({Color color = AppColors.ink3}) => GoogleFonts.archivo(
     );
 
 ThemeData buildAppTheme() {
-  final archivo = GoogleFonts.archivoTextTheme();
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
+    fontFamily: _archivo,
     scaffoldBackgroundColor: AppColors.ground,
     canvasColor: AppColors.ground,
     colorScheme: const ColorScheme.dark(
@@ -63,7 +73,9 @@ ThemeData buildAppTheme() {
       onSecondaryContainer: AppColors.accentInk,
       error: AppColors.red,
     ),
-    textTheme: archivo.apply(bodyColor: AppColors.ink, displayColor: AppColors.ink),
+    textTheme: Typography.material2021(platform: TargetPlatform.android)
+        .white
+        .apply(fontFamily: _archivo, bodyColor: AppColors.ink, displayColor: AppColors.ink),
     dividerColor: AppColors.line,
     dividerTheme: const DividerThemeData(color: AppColors.line, thickness: 1, space: 1),
     iconTheme: const IconThemeData(color: AppColors.ink2),
@@ -75,7 +87,7 @@ ThemeData buildAppTheme() {
         foregroundColor: AppColors.onAccent,
         padding: const EdgeInsets.symmetric(vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(appRadius)),
-        textStyle: GoogleFonts.archivo(fontSize: 14, fontWeight: FontWeight.w500),
+        textStyle: const TextStyle(fontFamily: _archivo, fontSize: 14, fontWeight: FontWeight.w500),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -84,13 +96,13 @@ ThemeData buildAppTheme() {
         side: const BorderSide(color: AppColors.lineStrong),
         padding: const EdgeInsets.symmetric(vertical: 13),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(appRadius)),
-        textStyle: GoogleFonts.archivo(fontSize: 13),
+        textStyle: const TextStyle(fontFamily: _archivo, fontSize: 13),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: AppColors.accentInk,
-        textStyle: GoogleFonts.archivo(fontSize: 13, fontWeight: FontWeight.w500),
+        textStyle: const TextStyle(fontFamily: _archivo, fontSize: 13, fontWeight: FontWeight.w500),
       ),
     ),
     listTileTheme: const ListTileThemeData(
